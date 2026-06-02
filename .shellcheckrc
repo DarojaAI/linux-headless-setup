@@ -1,0 +1,9 @@
+# Enable all checks, then selectively disable
+external-sources=true
+check-unassigned-uppercase
+deprecate-which
+
+# Disable checks that are too noisy for this codebase
+disable=SC1090
+disable=SC1091
+disable=SC2002
