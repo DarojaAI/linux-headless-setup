@@ -5,7 +5,8 @@ set -euo pipefail
 
 # ── Logging ──
 __log() {
-	local level="$1"	shift
+	local level="$1"
+	shift
 	local msg="$*"
 	echo "[$(date -Iseconds)] [$level] $msg"
 }
