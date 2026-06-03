@@ -47,12 +47,19 @@ apt_install unattended-upgrades
 dpkg-reconfigure -plow unattended-upgrades -f noninteractive || true
 
 # ── SSH hardening (light) ──
+# NOTE: We do NOT disable root SSH here because CI/CD deploy pipelines
+# need root access for subsequent deployments. The Terraform/Hetzner
+# cloud-init already disables password auth, so root is key-only.
 if [ -f /etc/ssh/sshd_config ]; then
 	info "Applying light SSH hardening..."
-	# Disable root login if not already done by cloud-init
-	if ! grep -q "^PermitRootLogin no" /etc/ssh/sshd_config; then
-		sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+	# Only ensure root login goes by key auth, not password
+	# (Hetzner cloud-init already does this, but be explicit)
+	if ! grep -qE "^#?PermitRootLogin (prohibit-password|without-password|no)" /etc/ssh/sshd_config; then
+		info "Ensuring PermitRootLogin is set to prohibit-password"
+		sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
 		systemctl restart sshd || true
+	else
+		info "Root SSH is already restricted"
 	fi
 fi
 
