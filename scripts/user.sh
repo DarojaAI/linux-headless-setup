@@ -23,6 +23,14 @@ if [ ! -f "/etc/sudoers.d/$APP_USER" ]; then
 	chmod 440 "/etc/sudoers.d/$APP_USER"
 fi
 
+# ── Enable systemd linger for user manager (needed for --user services without login) ──
+if ! loginctl show-user "$APP_USER" 2>/dev/null | grep -q "Linger=yes"; then
+	info "Enabling systemd linger for $APP_USER"
+	loginctl enable-linger "$APP_USER"
+else
+	info "Systemd linger already enabled for $APP_USER"
+fi
+
 # ── Ensure .ssh dir exists ──
 mkdir -p "$APP_HOME/.ssh"
 chmod 700 "$APP_HOME/.ssh"
