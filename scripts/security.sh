@@ -47,13 +47,12 @@ apt_install unattended-upgrades
 dpkg-reconfigure -plow unattended-upgrades -f noninteractive || true
 
 # ── SSH hardening (light) ──
+# NOTE: We do NOT disable root login here. Hetzner cloud-init sets
+# PermitRootLogin prohibit-password by default, which is sufficient.
+# The deploy workflow relies on root SSH for L3 orchestration.
+# linux-desktop-setup follows the same pattern — no sshd_config changes.
 if [ -f /etc/ssh/sshd_config ]; then
-	info "Applying light SSH hardening..."
-	# Disable root login if not already done by cloud-init
-	if ! grep -q "^PermitRootLogin no" /etc/ssh/sshd_config; then
-		sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-		systemctl restart sshd || true
-	fi
+	info "Skipping root login hardening — deploy workflow requires root SSH"
 fi
 
 info "Security hardening complete."
