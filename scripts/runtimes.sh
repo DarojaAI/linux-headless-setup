@@ -22,6 +22,10 @@ apt_install python3
 apt_install python3-pip
 apt_install python3-venv
 
+# Basic tools
+apt_install jq
+apt_install curl
+
 # Upgrade pip
 python3 -m pip install --upgrade pip --break-system-packages 2>/dev/null || python3 -m pip install --upgrade pip || true
 
