@@ -10,10 +10,10 @@ check() {
 	shift
 	if "$@" >/dev/null 2>&1; then
 		echo "[PASS] $name"
-		((PASS++))
+		((PASS++)) || true
 	else
 		echo "[FAIL] $name"
-		((FAIL++))
+		((FAIL++)) || true
 	fi
 }
 
