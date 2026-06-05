@@ -17,19 +17,13 @@ else
 fi
 
 # ── Sudo without password ──
-if [ ! -f "/etc/sudoers.d/$APP_USER" ]; then
-	info "Granting passwordless sudo to $APP_USER"
-	echo "$APP_USER ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$APP_USER"
-	chmod 440 "/etc/sudoers.d/$APP_USER"
-fi
+info "Ensuring passwordless sudo for $APP_USER"
+echo "$APP_USER ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$APP_USER"
+chmod 440 "/etc/sudoers.d/$APP_USER"
 
 # ── Enable systemd linger for user manager (needed for --user services without login) ──
-if ! loginctl show-user "$APP_USER" 2>/dev/null | grep -q "Linger=yes"; then
-	info "Enabling systemd linger for $APP_USER"
-	loginctl enable-linger "$APP_USER"
-else
-	info "Systemd linger already enabled for $APP_USER"
-fi
+info "Ensuring systemd linger is enabled for $APP_USER"
+loginctl enable-linger "$APP_USER" 2>/dev/null || true
 
 # ── Ensure .ssh dir exists ──
 mkdir -p "$APP_HOME/.ssh"
