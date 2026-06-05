@@ -36,6 +36,12 @@ source "$SCRIPT_DIR/scripts/lib.sh"
 info "=== deploy-headless.sh starting ==="
 info "Target user: $APP_USER"
 
+# ── Ensure user exists before handoff ──
+if [ "$APP_USER" != "root" ] && ! id -u "$APP_USER" &>/dev/null; then
+	info "Creating user: $APP_USER"
+	useradd --create-home --shell /bin/bash --user-group "$APP_USER"
+fi
+
 # ── Handoff setup: copy root SSH key to APP_USER so subsequent steps use APP_USER SSH ──
 # This must happen BEFORE security.sh disables root SSH.
 # The GitHub runner will use APP_USER SSH for all post-deploy steps.
