@@ -18,8 +18,8 @@ info "Configuring UFW..."
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh || true
-# Only enable if not already active — avoids hanging on interactive prompt
-if ! ufw status | grep -q "Status: active"; then
+# Always ensure UFW is active — enforce state, not skip-on-apparent-presence
+if ! ufw status | grep -q "^Status: active"; then
 	ufw --force enable
 fi
 
