@@ -36,6 +36,21 @@ source "$SCRIPT_DIR/scripts/lib.sh"
 info "=== deploy-headless.sh starting ==="
 info "Target user: $APP_USER"
 
+# ── Handoff setup: copy root SSH key to APP_USER so subsequent steps use APP_USER SSH ──
+# This must happen BEFORE security.sh disables root SSH.
+# The GitHub runner will use APP_USER SSH for all post-deploy steps.
+if [ "$APP_USER" != "root" ]; then
+	info "Setting up SSH handoff: copying root authorized_keys to $APP_USER"
+	mkdir -p "/home/$APP_USER/.ssh"
+	chmod 700 "/home/$APP_USER/.ssh"
+	cp /root/.ssh/authorized_keys "/home/$APP_USER/.ssh/authorized_keys" 2>/dev/null || \
+		cat /root/.ssh/authorized_keys > "/home/$APP_USER/.ssh/authorized_keys"
+	chmod 600 "/home/$APP_USER/.ssh/authorized_keys"
+	chown -R "$APP_USER:$APP_USER" "/home/$APP_USER/.ssh"
+	chown -R "$APP_USER:$APP_USER" "/home/$APP_USER"
+	info "SSH handoff complete — /home/$APP_USER now accessible via SSH"
+fi
+
 # ── Run modular scripts in order ──
 bash "$SCRIPT_DIR/scripts/system.sh"
 bash "$SCRIPT_DIR/scripts/security.sh"
