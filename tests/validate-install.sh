@@ -20,7 +20,7 @@ check() {
 echo "=== Headless Install Validation ==="
 
 # ── Binaries ──
-check "ssh installed" command -v sshd
+check "ssh installed" bash -c 'test -f /usr/sbin/sshd'
 check "curl installed" command -v curl
 check "git installed" command -v git
 check "jq installed" command -v jq
