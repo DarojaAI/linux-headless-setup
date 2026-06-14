@@ -78,19 +78,23 @@ Gaps in my knowledge that need operator input or further investigation. Severity
 **Resolved 2026-06-14 (operator):** Should be. **Action:** Sweep all 42 READMEs for a `.github` reference; add a "see also" footer where missing. Batch into a single housekeeping PR per repo, or a tracking issue with checklist.
 
 ### Q13. Stale branches / open PRs / unaddressed issues per repo
-**Resolved 2026-06-14 (operator):** Have a look. **Action:** Sweep all repos for: (a) branches untouched for >90 days, (b) PRs open for >30 days without activity, (c) issues open for >90 days without activity. Surface a per-repo health report. Sunset candidates = 30+ open issues AND 0 commits in 6 months. Pattern is reusable; extract a skill.
+**Resolved 2026-06-14 (operator):** Have a look. **Done:** swept 41 active repos via `gh api`. **Findings:** 18 open PRs across 8 repos, 65+ open issues across 17 repos, 15 "quiet" repos. **Critical:** `skill-bridge#14` documents a release.yml 404 (any push to main would fail to release). **Stale PRs >30d:** `dev-nexus-frontend#48` (89d) and `#60` (61d). **Stale issues >30d:** `core-business-management` (10, 55d), `GlobalBitings` (9, 74d), `dev-nexus` (DB Fortification epic 6 issues, 31d). Full report at `memory/2026-06-14-q13-take.md` and `_context/audits/q13/REPORT.md`.
+
+**Recommended actions (in order):**
+1. Fix `skill-bridge#14` (release.yml 404 — release blocker).
+2. Triage `dev-nexus-frontend#48, #60`.
+3. `GlobalBitings` 9 stale issues — sweep "still relevant?"
+4. `core-business-management` 10 issues — close `[DEFERRED]`.
+5. `dev-nexus` DB Fortification epic — single "is this still on?" check.
 
 ---
 
 ## P1 — Structural (raised by intelligent-feed deep read 2026-06-14)
 
 ### Q14. `dynamic-worlock` is a dangling reference
-`intelligent-feed/intel/activation/dynamic_worlock.py` and `factory.py` reference `DarojaAI/dynamic-worlock` (with both hyphen and underscore aliases). **The repo does not exist** (`gh repo view DarojaAI/dynamic-worlock` → 404). The activator ships in `intelligent-feed` and is registered in the factory, so `get_activator("dynamic-worlock")` will fail at runtime if anyone tries it. Three possibilities:
-- (a) Repo is private, invisible to this token. **Verify.**
-- (b) Repo was deleted; the activator is dead code.
-- (c) Different org, or never created.
+**Resolved 2026-06-14 (operator):** Repo is **private**. Per the operator, it is intentionally kept for development of a knowledge repository for sporting events. Not visible to the public `gh` token, but it exists. The activator is shipped and will work once the target data files exist at the configured paths (env-var-overridable). **PR `DarojaAI/intelligent-feed#1` updated AGENTS.md and README to reflect this** (no longer labeled "DANGLING REFERENCE" — now labeled "PRIVATE" with the operator's intent).
 
-**Need:** operator to confirm the status and decide: delete the activator + factory entries, or unorphan the repo.
+**No code action needed.** The activator stays in the factory; the env-var paths added in Q16 make it portable. The repo's data files will appear when the operator is ready to start receiving claims.
 
 ### Q15. `intelligent-feed` is a shared library masquerading as a product
 **Resolved 2026-06-14 (operator):** Should be documented as a shared lib. **Action:** Add a standardized `AGENTS.md` to `intelligent-feed` (per the RFC template from `.github#1`) + document the cross-repo activation contract prominently in the README. Cheapest viable path.
