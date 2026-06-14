@@ -27,6 +27,8 @@ Last refresh: 2026-06-14
 | `linux-headless-setup` | mapped | L2 (headless) | Server-only OpenClaw host base. No GUI. |
 | `linux-desktop-setup` | mapped | L2 (desktop) | Full GUI base. Production-ready, tested 22.04/24.04. |
 | `linux-desktop-seed` | mapped | L3a | VM ops + deploy orchestration. Imports L1 + L2. |
+| `linux-desktop-seed-public` | mapped | L3a (public mirror) | Public-facing mirror per GOVERNANCE.md "Public/Examples" category. 8 workflows. |
+| `terraform-linux-desktop` | partial | L1b | Terraform module paired with `linux-desktop-seed`. 2 workflows; both consume infra-actions. |
 
 ## Intelligence Triad (3)
 
@@ -105,6 +107,8 @@ Snapshot 2026-06-14 (post-batch, refreshed via `skills/audit-org-readmes`):
 - **Partial:** 11
 - **Unexplored:** 1
 - **Flagged:** 0 (Q3 resolved: the two Neo4j repos are intentional fork-of-fork, not duplicates)
+- **CODEOWNERS present:** 4 of 41 active repos (`infra-actions`, `rag_research_tool`, `dev-nexus`, `mcp-tooling`) — 90% gap (Q6, sweep 2026-06-14).
+- **infra-actions adopted by:** 18 of 41 active repos (~44%, Q7 sweep 2026-06-14). Heaviest users: `rag_research_tool` (9 workflows), `dev-nexus` (7). Notable gaps: `openclaw-gateway`, `bond-nexus`, `research-orchestrator`, `mcp-tooling`.
 
 The "empty description" ratio was the single biggest org-wide documentation gap. After a one-time batch on 2026-06-14, the remaining 2 are archived-repo blockers. README and description are *different* signals: README = developer-facing docs; description = discoverability on the org page.
 

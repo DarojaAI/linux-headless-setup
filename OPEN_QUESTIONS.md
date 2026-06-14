@@ -53,7 +53,7 @@ Gaps in my knowledge that need operator input or further investigation. Severity
 **Resolved 2026-06-14 (operator):** Intent of `infra-actions` is org-wide (composite actions available to all repos). **Usage is uneven** — some repos import, some roll their own. **Action:** Sweep `.github/workflows/` across all repos, list actions used, compare to `infra-actions` library. Identify the high-value roll-your-own cases and propose migrations. Pattern is reusable; extract a skill.
 
 ### Q8. Does the `DAT contract` (no hardcoded env values) apply beyond `openclaw-gateway`?
-**Status:** Open. Need to read `DarojaAI/.github/docs/CI-CD-STANDARDS.md` to confirm whether the DAT contract is org-wide or local to `openclaw-gateway`. **Action:** Fetch the standards doc and report.
+**Resolved 2026-06-14:** Yes, it's org-wide. Found in `.github/docs/CI-CD-STANDARDS.md` §1 "No Hardcoded Values" — "Database credentials → GitHub Secrets + GitHub Actions `environment`; API keys → GitHub Secrets; SSH keys → GitHub Secrets." Same principle, different name. `openclaw-gateway`'s "DAT contract" is the local name; the org standard uses the more general "No Hardcoded Values" framing. **Promoted to MEMORY.md (load-bearing fact #3).**
 
 ---
 
