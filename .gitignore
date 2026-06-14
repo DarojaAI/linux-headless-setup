@@ -1,0 +1,11 @@
+# Local scratch — clones of repos I'm analyzing
+_context/
+
+# Local-only files
+.openclaw/
+
+# Standard ignores
+.DS_Store
+*.swp
+*.swo
+*~
