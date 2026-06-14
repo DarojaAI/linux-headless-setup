@@ -1,0 +1,17 @@
+{
+  "_comment": "docs-audit config for darojaai_architect. The architect repo doesn't use a docs/ subdirectory; canonical docs live at the root (AGENTS.md, MEMORY.md, ARCHITECTURE.md, REPOS.md, OPEN_QUESTIONS.md, README.md).",
+  "docs_root": ".",
+  "canonical_index": "README.md",
+  "known_artifact_dirs": [
+    "memory",
+    "skills"
+  ],
+  "known_artifact_patterns": [
+    "memory/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.md"
+  ],
+  "canonical_subdirs": {
+    "memory": "raw daily session notes (ephemeral)",
+    "skills": "procedural memory (skills)"
+  },
+  "skip_dirs": ["venv", ".git", "node_modules", ".pytest_cache", "_context", ".openclaw", "skills", "memory"]
+}
