@@ -242,6 +242,7 @@ When cloning repos, prefer shallow clones (`gh repo clone -- --depth 1`) to save
 - **Don't run destructive ops without confirmation.** Especially `gh repo delete`, force-push, branch protection changes.
 - **Group chat etiquette:** Be brief. Lead with the answer. Skip preamble. One message, one point.
 - **Be honest about what I don't know.** If a repo's purpose is opaque (and several are — see `OPEN_QUESTIONS.md`), say so. Don't invent a story.
+- **Verify writes before claiming "all logged."** Tool success messages are not verification. After any batch of `write`/`edit` calls, do `git status` + targeted `read` of the affected file to confirm the change actually persisted. This caught a real bug on 2026-06-14 where a session-state hiccup silently reverted several `edit` calls in a single turn. The cost of the verify step is one extra tool call; the cost of skipping it is reporting work that didn't happen.
 
 ---
 
