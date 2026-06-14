@@ -34,7 +34,7 @@ A small GitHub org (~42 repos) building a stack that goes from bare cloud VM to 
 ## Open architectural hypotheses (not yet confirmed)
 
 - `trip-planning` consumes `mcp-tooling/duffel` for flights (inferred from `mcp-tooling` README; not confirmed in `trip-planning` source).
-- `agentic-log-attacker` and `skill-bridge` are the two non-archived "agentic systems" repos. May overlap with `dev-nexus`/`mcp-tooling`/`openclaw-gateway` — needs audit.
+- `agentic-log-attacker` and `skill-bridge` are the two non-archived "agentic systems" repos. May overlap with `dev-nexus`/`mcp-tooling`/`openclaw-gateway` — needs audit. (**Update 2026-06-14:** `agentic-log-attacker` is also archived. Only `skill-bridge` remains active in this bucket. Consider folding it into "Shared Libraries & Templates" once that category RFC lands.)
 - The 4 GCP Terraform modules in `vpc-infra`/`gcp-postgres-terraform`/`gcp-dbt-terraform`/`gcp-vpc-egress-terraform` form a layered stack (network → db → dbt → egress) — need to confirm.
 
 ## Documentation health (snapshot 2026-06-14)

@@ -69,14 +69,13 @@ Last refresh: 2026-06-14
 | `terraform-gcp-cloudrun-vpc-job` | partial | Cloud Run job w/ VPC | |
 | `gcp-vpc-egress-terraform` | partial | VPC egress | |
 
-## Agentic Systems (2)
+## Agentic Systems (1)
 
 | Repo | Status | Purpose | Notes |
 |---|---|---|---|
-| `agentic-log-attacker` | mapped | Cloud log → to-do → PR fixer | Has description. Different concern from dev-nexus (logs vs. patterns). |
 | `skill-bridge` | partial | Claude Code skills → OpenClaw | TypeScript. Closes a gap: lets skills authored for Claude Code be used in OpenClaw. |
 
-> Note: `dependency-orchestrator` and `pattern-miner` were originally in this bucket but are **archived** (Q1, Q2, fork-of-fork convention). They've been moved out of the active inventory.
+> **Bucket effectively retired.** As of 2026-06-14, all three other "agentic systems" repos are archived: `agentic-log-attacker` (operator-confirmed this turn), `dependency-orchestrator` (Q2), `pattern-miner` (Q1). `skill-bridge` remains active but is a translator utility, not an agent — its fit in this bucket is loose. Consider folding `skill-bridge` into "Shared Libraries & Templates" (Q4 bucket) once the RFC lands.
 
 ## Utilities / Misc (10)
 

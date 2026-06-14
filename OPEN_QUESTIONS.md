@@ -116,7 +116,7 @@ This is the same shared-lib-with-misleading-name pattern as `devnexus-common`/`p
 ## Resolved (archive)
 
 ### Q-arch. Archived repos with proposed descriptions
-**Resolved 2026-06-14:** Operator decision: leave the 2 archived repos (`dependency-orchestrator`, `pattern-miner`) as-is. Their proposed descriptions stay in `_context/descriptions-pending-archived.csv` for re-application when unarchived.
+**Resolved 2026-06-14:** Operator decision: leave the archived repos (`dependency-orchestrator`, `pattern-miner`, `agentic-log-attacker`) as-is. Their proposed descriptions stay in `_context/descriptions-pending-archived.csv` for re-application when unarchived. **`agentic-log-attacker` confirmed archived 2026-06-14 05:39 UTC** per operator.
 
 ### Q-who-using. skill-bridge "Who is using" table — operator row accuracy
 **Status 2026-06-14:** The "Who is using skill-bridge" section in the README (PR #30) lists the operator workspace (`session-commands`, `maintenance` skills) as "in use" — that's an inference from the manifest, not ground-truth confirmation from the operator. **Need operator to confirm:** is that row correct, or should it say "pre-adoption, consumers TBD" until a real consumer pipeline is verified? Edit the row in PR #30 or amend it post-merge.
