@@ -214,3 +214,31 @@ Once Postgres has the canonical entities/relationships, the wiki generation shou
 **Bottom line:** the operator's pain is real and is centered on the fact that the production pipeline bypasses the canonical Postgres store. Fixing that — adding a `postgres_write` stage to the orchestrator and reading from it downstream — unblocks the visible symptoms (query router broken, wiki full of raw data, Neo4j syncing from non-canonical source). The fix is well-scoped (~3-5 days of focused work) and the code is mostly there (postgres_writer.py, entity_resolution.py). What's missing is the wiring in the orchestrator.
 
 Ready to draft the Step 1 PR (issue #789 schema fix) on your sign-off, and to start the research-orchestrator + intelligent-feed deep dive next session.
+
+
+---
+
+## Status (2026-06-15, post-issues-filed)
+
+Operator direction: "save this as a plan in rag-research-tool. open the issues in the correct places."
+
+**Done:**
+- **`DarojaAI/rag_research_tool` PR #813 (MERGED):** `docs/convergence-plan.md` — the org-wide roadmap. 5 phases over ~14 days. Cross-references this take and the orbit take.
+- **4 new issues filed in `DarojaAI/rag_research_tool`:**
+  - #814 (P0): Pipeline bypasses canonical Postgres entities/relationships tables — Phase A.3 of the plan
+  - #815 (P1): Two parallel pipelines — Phase E.2 of the plan
+  - #816 (meta): Convergence tracking — links to all sub-issues
+  - #817: Naming decision (Synapse recommended) — Phase E.1 of the plan
+- **Comment on existing #789:** Full diagnosis from the deep-dive + suggested 1-line fix.
+- **Cross-repo issues filed:**
+  - `DarojaAI/research-orchestrator#1` (P0): Schema mismatch breaks rag-research path + sys.path deprecation — Phase A.2 + D.2 of the plan
+  - `DarojaAI/intelligent-feed#2` (P1): Make installable Python package — Phase D.1 of the plan
+
+**Yes, prior findings & shortcomings were saved:**
+- This file (`memory/2026-06-14-rag-research-tool-deep-dive.md`) — the rag_research_tool take, in the architect repo
+- `memory/2026-06-14-research-orchestrator-intelligent-feed-deep-dive.md` — the orbit take, in the architect repo
+- Both are in `DarojaAI/darojaai_architect#3` (PR)
+
+These are *architect-side* memory files, not issues in the target repos. **The issues in the target repos were the gap — now closed.**
+
+**Next step awaiting operator sign-off:** Phase A.1 (1-line fix for #789, ~1-2h) as the immediate unblock. Or any of the 6 issues can be picked up first.
