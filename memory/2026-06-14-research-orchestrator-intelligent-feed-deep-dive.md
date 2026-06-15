@@ -1,10 +1,23 @@
 # Architectural Take: research-orchestrator + intelligent-feed (the Cognee orbit)
 
-> **Date:** 2026-06-14, Session 14 part 7
+> **Date:** 2026-06-14, Session 14 part 7 (original); revised 2026-06-15 after peer review of the rag_research_tool take.
 > **Repos:** `DarojaAI/research-orchestrator` (FastAPI), `DarojaAI/intelligent-feed` (Python activators + renderers)
 > **Operator direction:** "do deep dive into rag research tool first, then the other 2."
-> **Status:** DRAFT v0.1 — for operator review.
+> **Status:** DRAFT v0.2 — revised after peer review. Most of this take is about research-orchestrator and intelligent-feed, which the in-repo agent couldn't verify, so the schema mismatch claim (§5.1) is unchanged. Cross-references to the rag_research_tool take's P0 in §6 are now stale; see the correction note below.
 > **Scope:** architectural diagnosis only. No code changes. No cross-repo claims that aren't verified.
+
+---
+
+## ⚠️ Note (2026-06-15, post-peer-review)
+
+The peer review of the rag_research_tool take by the in-repo `rag_research_tool` agent did **not** invalidate the core findings of this take. The agent reviewed the rag_research_tool repo, not research-orchestrator or intelligent-feed. So:
+
+- **§5.1 (schema mismatch is a P0)** — still stands, unverified by anyone but me. The in-repo agent offered to produce a curl + traceback repro for `DarojaAI/research-orchestrator#1` — that should happen before treating it as a confirmed P0.
+- **§5.3 (intelligent-feed#1 = right kind of work)** — **now landed**. PR #1 was MERGED 2026-06-14. PR #3 (the packaging work, `intelligent-feed#2`) was also MERGED 2026-06-15 by operator. The `intelligent-feed` part of this take is now substantially done.
+- **§6 reference to "rag_research_tool's P0: pipeline bypasses canonical store"** — **stale.** The rag_research_tool take v0.1 was wrong about that. The real P0 is stage 6 (entity resolution) missing from the orchestrator. See `memory/2026-06-14-rag-research-tool-deep-dive.md` for the corrected version.
+- **Q14 (dynamic-worlock 404)** — **RESOLVED 2026-06-15.** Operator confirmed it's private in `e16af80` commit on intelligent-feed.
+
+**Lesson promoted to AGENTS.md (House Rules, commit `0260385`):** "Verify the code, not the docs." The peer review caught a real failure in the rag_research_tool take. This take was less affected because the agent couldn't review the orchestrator/intelligent-feed code, but the lesson applies: every cross-repo claim should be re-derived from call sites, not from the docs.
 
 ---
 
@@ -269,15 +282,15 @@ If you actually call `POST /research/goals` with a `rag-research` project today,
 
 research-orchestrator's last push was 2026-05-03. That's 6 weeks ago, in the middle of a session-heavy org (per the cron, today alone is the 7th session in 36 hours). The repo isn't dead — it's just incomplete. The schema mismatch in §5.1 may be why: the operator tried it once, hit a wall, and parked it. Worth a brief conversation: "what did you try that didn't work?"
 
-### 5.3 intelligent-feed's PR #1 (session 12) is exactly the right kind of work
+### 5.3 intelligent-feed's PR #1 (session 12) is exactly the right kind of work — and it landed
 
-The Q15-17 work landed in `intelligent-feed#1`: env-var path overrides, AGENTS.md, CI, LICENSE. **That's the same pattern as this plan's Steps 1-4 and 8.** Worth closing that PR and then proposing Steps 1-4 as the next PRs in intelligent-feed. The work is in flight; just needs to land and continue.
+The Q15-17 work landed in `intelligent-feed#1` (MERGED 2026-06-14): env-var path overrides, AGENTS.md, CI, LICENSE. **That's the same pattern as this plan's Steps 1-4 and 8.** PR #1 is now in `main`. Operator also pushed PR #3 (the packaging work, MERGED 2026-06-15) which closed `intelligent-feed#2`. The `intelligent-feed` part of this take is now substantially done — the substrate work is complete. What's left is: (a) the orchestrator's `sys.path` deprecation (Phase D.2 of the convergence plan), and (b) the cross-claim schema reconciliation (Phase C of the convergence plan).
 
 ---
 
 ## 6. What this take does NOT cover
 
-- **rag_research_tool's "premier product" pain.** That's a separate repo with a separate problem (the P0 in `memory/2026-06-14-rag-research-tool-deep-dive.md`: pipeline bypasses canonical store). This take is about the orbit around rag_research_tool, not rag_research_tool itself.
+- **rag_research_tool's "premier product" pain.** That's a separate repo with a separate problem. **The v0.1 framing of this take (and the convergence plan) called it "pipeline bypasses canonical store" — the in-repo agent peer-reviewed and the actual code shows the wiring is there. The corrected P0 is stage 6 (entity resolution) missing from the orchestrator.** See `memory/2026-06-14-rag-research-tool-deep-dive.md` (revised 2026-06-15) for the full corrected diagnosis. This take is about the orbit around rag_research_tool, not rag_research_tool itself.
 - **Cognee strengthening work.** The operator has ambitions; this take makes the substrate ready but doesn't *do* the strengthening.
 - **Multi-tenant or scaling concerns.** Both services are single-tenant, single-instance. Worth a separate take if/when that becomes a concern.
 - **Code changes.** This is diagnosis only. Steps 1-9 require operator sign-off before any code change.
