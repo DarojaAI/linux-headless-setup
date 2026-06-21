@@ -1,10 +1,10 @@
 # Skill Ecosystem — Architecture & Roadmap
 
-> **Status:** DRAFT v0.1 — for operator review.
+> **Status:** DRAFT v0.2 — for operator review. v0.2 corrects the taxonomy substrate: Cognee is in the rag_research_tool-orbit, not in dev-nexus. The Cognee work is underdeveloped and being actively strengthened.
 > **Date:** 2026-06-14
 > **Repo:** `DarojaAI/darojaai_architect` (this is the canonical planning doc; mirror in `ARCHITECTURE.md` and `MEMORY.md`).
 > **Scope:** Org-wide. Spans 5 concerns: translation, registry, governance, taxonomy, marketplace I/O.
-> **Source material:** `memory/2026-06-14-skill-bridge-take.md`, `memory/2026-06-14.md` (Q-bridge conversation), live code in `DarojaAI/skill-bridge`, `DarojaAI/dev-nexus`, `DarojaAI/openclaw-gateway`, `DarojaAI/rag_research_tool`, `DarojaAI/mcp-tooling`, `DarojaAI/infra-actions`, and the OpenClaw upstream `skill_workshop` subsystem.
+> **Source material:** `memory/2026-06-14-skill-bridge-take.md`, `memory/2026-06-14.md` (Q-bridge conversation), live code in `DarojaAI/skill-bridge`, `DarojaAI/dev-nexus`, `DarojaAI/openclaw-gateway`, `DarojaAI/rag_research_tool`, `DarojaAI/research-orchestrator`, `DarojaAI/intelligent-feed`, `DarojaAI/mcp-tooling`, `DarojaAI/infra-actions`, and the OpenClaw upstream `skill_workshop` subsystem.
 
 ---
 
@@ -67,6 +67,7 @@ graph TB
 - **No shared taxonomy** — categories, tags, and relationships between skills are implicit in folder names.
 - **Two competing "skill_workshop" concepts** — OpenClaw upstream's `skill_workshop` tool (proposal-based skill creation) and `dev-nexus/skill_workshop/` (a static folder of skill content). They share a name; they are not the same thing.
 - **Two skill paths in dev-nexus** — `dev-nexus/skill_workshop/` (SKILL.md files, hand-authored) and `dev-nexus/a2a/skills/` (Python, served over MCP/A2A). The first is content for other agents; the second is callable from openclaw-gateway.
+- **Cognee is *not* in dev-nexus** — `dev-nexus/requirements.txt` has no Cognee dependency; Cognee is referenced in 2 design docs only. The Cognee work is in `rag_research_tool` + `research-orchestrator` + `intelligent-feed`, and is **underdeveloped and in active strengthening** (operator 2026-06-14). This is the substrate for §3.4 Taxonomy; do not assume dev-nexus is the home.
 
 ### 2.2 Format inventory
 
@@ -123,8 +124,8 @@ graph TB
         IA["DarojaAI/infra-actions<br/>+ .github/actions/<br/>  skill-publish/ (new)<br/>lint, license-check,<br/>sign, version, publish"]
     end
 
-    subgraph Taxonomy["4. TAXONOMY"]
-        DN["DarojaAI/dev-nexus<br/>(existing Cognee KG)<br/>+ skill_taxonomy/<br/>additive: tags, domains,<br/>depends-on, supersedes,<br/>semantic search"]
+    subgraph Taxonomy["4. TAXONOMY (in flight)"]
+        RRST["DarojaAI/rag_research_tool<br/>(in-orbit Cognee work)<br/>+ research-orchestrator<br/>(CogneeClient.cognify)<br/>+ intelligent-feed<br/>(per-project activators)<br/><b>NOT dev-nexus</b><br/>(dev-nexus is pattern analysis,<br/>not KG, per P0 contract)"]
     end
 
     subgraph Marketplace["5. MARKETPLACE I/O"]
@@ -142,7 +143,7 @@ graph TB
     style SB fill:#e1f5ff
     style SR fill:#fff4e1
     style IA fill:#f0f0f0
-    style DN fill:#e1f5ff
+    style RRST fill:#e1f5ff
     style MA fill:#fff4e1
 ```
 
@@ -165,7 +166,7 @@ graph TB
 
 ### 3.2 Subsystem 2: Registry / Inventory (DarojaAI/skill-registry, new)
 
-**Status:** Does not exist. The closest analog is `dev-nexus`'s Cognee KG, but that's a *knowledge* store, not a *skill* store.
+**Status:** Does not exist. The closest analog is the Cognee integration in the rag_research_tool-orbit (research-orchestrator's `CogneeClient.cognify()`, intelligent-feed's per-project activators feeding into Cognee), but those are *knowledge extraction* flows, not *skill inventory*. A skill registry is a different concern: records, versions, license, ownership, provenance, lookups.
 
 **Public or internal:** Internal (for now). Could go public later if the org wants to host a public skill catalog.
 
@@ -175,7 +176,7 @@ graph TB
 - CLI: `skill-registry search`, `skill-registry info <id>`, `skill-registry publish` (writes only; read-only by default).
 - Storage: probably a JSON index in git + a small API server, or a flat-file registry with content hashes (à la npm or Homebrew formulas). **No database needed at this scale** (8 known skills, 4 repos).
 
-**Why a new repo, not dev-nexus:** dev-nexus is **knowledge** (patterns, lessons, drift) per the P0 contract. A skill registry is **inventory** (records, versions, lookups). Different concern, different home. But dev-nexus is the natural *consumer* of the registry — the taxonomy subsystem (3.4) reads the registry to build the KG.
+**Why a new repo, not dev-nexus:** dev-nexus is **knowledge** (patterns, lessons, drift) per the P0 contract. A skill registry is **inventory** (records, versions, lookups). Different concern, different home. The natural *consumer* of the registry is the taxonomy subsystem (§3.4), which is in the rag_research_tool-orbit (not dev-nexus) — see §3.4 for why this matters.
 
 ### 3.3 Subsystem 3: Governance / Quality (DarojaAI/infra-actions, additive)
 
@@ -193,24 +194,40 @@ graph TB
 
 **Why infra-actions, not a new repo:** the org already converges on infra-actions (18 of 41 active repos use it; Q7). Adding a 5th composite action follows the established pattern. New repo would be the `devnexus-common` problem in a different shape.
 
-### 3.4 Subsystem 4: Taxonomy (DarojaAI/dev-nexus, additive)
+### 3.4 Subsystem 4: Taxonomy (rag_research_tool orbit, in flight)
 
-**Status:** dev-nexus has a Cognee KG, used today for code patterns and lessons. No skill taxonomy yet.
+**Status:** **Underdeveloped. In active development.** Per operator (2026-06-14), knowledge graph capabilities are being strengthened in the rag_research_tool-orbit (rag_research_tool + research-orchestrator + intelligent-feed), not in dev-nexus. dev-nexus has no Cognee dependency in `requirements.txt`; it only mentions Cognee in 2 design docs.
 
-**Public or internal:** **Internal.** Stays consistent with dev-nexus's existing scope.
+**Public or internal:** **Internal.** KG work stays internal, consistent with the existing orbit.
 
-**What it would do:** add a `skill_taxonomy/` additive content type to the Cognee KG:
+**Where the Cognee work actually lives today:**
+- `DarojaAI/rag_research_tool` — Neo4j + Weaviate backed RAG; KG is the secondary store alongside vector. Real but early.
+- `DarojaAI/research-orchestrator` — FastAPI service; `CogneeClient.cognify()` does LLM extraction. The active Cognee integration.
+- `DarojaAI/intelligent-feed` — per-project activators (globalbitings, bond-nexus, rag_research_tool, dynamic-worlock) that feed content into Cognee via the orchestrator.
+- `DarojaAI/dev-nexus` — **NOT** a Cognee home. Per the P0 contract, dev-nexus is *pattern analysis* (Python code, A2A skills, PostgreSQL-backed pattern store). Cognee is not in its dependency tree.
+
+**What it would do:** add a `skill_taxonomy/` content type to the in-flight Cognee work, likely in the orchestrator or rag_research_tool:
 - **Tags:** `domain:data-contracts`, `domain:kg`, `domain:cost`, etc.
 - **Relationships:** `depends-on:<other-skill>`, `supersedes:<old-skill>`, `conflicts-with:<other-skill>`.
 - **Discovery:** "find all skills related to data contracts" → semantic search via Cognee.
 
-**Why dev-nexus, not a new repo:** the org already pays for the Cognee infrastructure in dev-nexus. Adding a new content type is cheaper than standing up a separate KG. And the P0 contract already routes "what patterns exist" questions to dev-nexus; "what skills exist" is the same shape of question.
+**Why this orbit, not a new repo or dev-nexus:**
+- The KG infrastructure is being paid for in the rag_research_tool-orbit (Neo4j, Weaviate, Cognee, Pydantic models, FastAPI service). Adding skill entities to that work is cheaper than starting fresh.
+- dev-nexus is **not** the right home per the P0 contract. Its concern is *pattern analysis* (code/doc patterns, lessons, drift). Skill taxonomy is a different shape of question.
+- The taxonomy work is the operator's stated ambition area, so the *priority* is strengthening what exists in the orbit before extending to skills.
 
-**Risk:** if dev-nexus's Cognee pipeline is fragile or slow, adding skill data could regress it. Need to confirm Cognee can handle 100s of skill entities without performance issues. (8 skills today is trivially fine; 100s is the worry.)
+**Open question for operator:** does the skill taxonomy
+- (a) **Add to** the in-flight Cognee work in research-orchestrator (skill entities become one more content type),
+- (b) **Get pulled into** the broader Cognee strengthening (skills are a use case that drives the KG capability forward), or
+- (c) **Wait** until the in-flight Cognee work stabilizes, then design skill taxonomy on top of a proven substrate?
+
+**Recommendation:** (b). The skill ecosystem is a real driver for KG capabilities (cross-skill discovery, "what skills do I have for X", marketplace ingestion). Treating skill taxonomy as a *use case* that helps validate and strengthen the in-flight Cognee work is more valuable than treating it as a *consumer* of mature infrastructure.
+
+**Risk:** the in-flight Cognee work is exactly that — in flight. Adding skill data to an unstable substrate risks both. Mitigation: §5.6 spells this out; §6.4 Q4 makes the operator the decision-maker.
 
 ### 3.5 Subsystem 5: Marketplace I/O (DarojaAI/mcp-tooling/extensions/skill-marketplace/, TBD)
 
-**Status:** Does not exist. The closest analog is the dev-nexus MCP server, which exposes skills over protocol.
+**Status:** Does not exist. The closest analog is the dev-nexus MCP server (exposes skills over protocol) and the research-orchestrator's Cognee integration (exposes extraction over protocol) — both illustrate the "wrap an external API as a tool" pattern.
 
 **Public or internal:** Depends on the marketplace. Some marketplaces (agentskills.io, Claude Code plugin registry) will require public mcp-tooling packages; others (internal-only) stay private.
 
@@ -337,13 +354,21 @@ It's tempting to start building `mcp-tooling/extensions/skill-marketplace/claude
 
 **Mitigation:** don't build Subsystem 5 (marketplace I/O) until a concrete second consumer materializes. If/when someone outside the org asks "how do I get skills from your registry," *that's* the trigger.
 
-### 5.6 Risk: dev-nexus Cognee pipeline is fragile or slow at scale
+### 5.6 Risk: the in-flight Cognee work in the rag_research_tool-orbit is underdeveloped
 
-**Severity:** Medium. **Likelihood:** Low (at 8 skills) → Medium (at 100s of skills).
+**Severity:** High. **Likelihood:** High (it is the operator's stated reality, 2026-06-14).
 
-If the taxonomy subsystem adds skill entities to the Cognee KG, and the pipeline is fragile, adding skills could break the existing pattern-extraction pipeline. At 8 skills this is trivially fine. At 100s, it's worth measuring.
+The taxonomy subsystem (§3.4) depends on KG capabilities that the operator has flagged as "underdeveloped" and actively being strengthened. dev-nexus is **not** the substrate (per the P0 contract and the empty Cognee dependency in `dev-nexus/requirements.txt`); the substrate is the in-flight Cognee work in rag_research_tool + research-orchestrator + intelligent-feed.
 
-**Mitigation:** add skill entities to the KG **incrementally** (10 at a time, observe), and add a load test before scaling past 50.
+Implications:
+- The taxonomy subsystem cannot land before the Cognee work stabilizes. Schedule dependency: §3.4 follows §7 step 1 (public-readiness) by *months*, not weeks.
+- The operator's "ambition in that area" is a *strategic* signal: the skill ecosystem work should align with the Cognee strengthening work, not compete with it for attention.
+- Adding skill entities to an unstable KG risks both: skill data may be wrong (because the KG isn't done) and may slow down the KG work (because the team is now debugging skill data, not strengthening the substrate).
+
+**Mitigation:**
+- Don't try to land §3.4 in the next 90 days. Treat it as Q3-Q4 2026 work at earliest.
+- Use the in-flight Cognee work as a *forcing function*: every skill that's cataloged now should be a use case that helps validate the in-flight KG capabilities (per §3.4 recommendation (b)).
+- When the in-flight Cognee work stabilizes, re-derive this section. The current §3.4 design is provisional and will be wrong in details.
 
 ### 5.7 Risk: the 5-subsystem architecture is over-engineered for 8 skills
 
@@ -381,23 +406,36 @@ Which marketplaces are in scope?
 
 This affects Phase 6 design but not the public-readiness PR.
 
-### 6.4 Taxonomy scope
+### 6.4 Taxonomy scope — and relation to in-flight Cognee work
 
-What does "taxonomy" mean for this org?
+**Critical context (operator, 2026-06-14):** the Cognee KG work in the rag_research_tool-orbit is *underdeveloped* and being actively strengthened. dev-nexus is **not** the substrate; the substrate is in-flight. This means taxonomy scope can't be decided in isolation — it's coupled to the Cognee strengthening roadmap.
+
+Two-part question:
+
+**Part 1: scope of skill taxonomy itself**
 - **(a) Flat tags + categories** — in-registry, simple, no KG needed.
-- **(b) Small ontology of skill relationships** (depends-on, supersedes, conflicts-with) — small KG extension, additive to dev-nexus.
+- **(b) Small ontology of skill relationships** (depends-on, supersedes, conflicts-with) — small KG extension.
 - **(c) Full semantic search via Cognee** — bigger KG work, only if (a) and (b) prove insufficient.
 
-**Recommendation:** start with (a) and (b). Defer (c) until proven necessary.
+**Part 2: how taxonomy relates to the in-flight Cognee work**
+- **(i) Add to** the in-flight Cognee work in research-orchestrator (skill entities become one more content type, after the substrate stabilizes).
+- **(ii) Drive** the in-flight Cognee work (skills are a use case that helps validate and strengthen the substrate; the org strengthens the KG *because* of skills, not before skills).
+- **(iii) Wait** until the in-flight Cognee work stabilizes, then design skill taxonomy on top of a proven substrate.
+
+**Recommendation:** **(c)+(ii)** in a deferred sense. Start with (a) in the registry (no KG needed; ships with §7 step 1). Let the in-flight Cognee work progress. Use skills as a forcing function for the KG strengthening (option (ii)). When the substrate is ready, layer (b) on top. Defer (c) full semantic search until proven.
+
+**Open question for the operator:** does the skill ecosystem work in DarojaAI compete with the Cognee strengthening work for attention, or does it *drive* it? The recommendation assumes (ii) — skills as a forcing function. If the operator wants the Cognee work to mature first and skills to come later, the plan changes.
 
 ### 6.5 Order of work after public-readiness
 
 What's the next concrete deliverable?
 - (a) skill-registry MVP (most operators find this most painful — no SSOT for skills)
 - (b) infra-actions/skill-publish composite action (governance, enables safe public release)
-- (c) dev-nexus `skill_workshop/` rename + Cognee taxonomy (hygiene + discovery)
+- (c) dev-nexus `skill_workshop/` rename + rag_research_tool-orbit Cognee taxonomy (hygiene + discovery)
 
 **Recommendation:** (b) first. The skill-publish action is the governance gate that protects the public release from accidental license leakage, broken links, or unsigned content. The registry and taxonomy can come after.
+
+**Note:** (c) has a dependency on the in-flight Cognee work stabilizing. It cannot be done in the next 90 days; it can only be planned and designed in that window.
 
 ---
 
@@ -411,7 +449,7 @@ graph TB
 
     PR3["Step 3: skill-registry MVP<br/>(~500 lines, ~1 week)<br/>JSON index in git<br/>+ CLI<br/>+ minimal API<br/>or: defer until step 2 proves out"] --> PR4
 
-    PR4["Step 4: dev-nexus skill taxonomy<br/>(additive, ~300 lines)<br/>Cognee KG extension<br/>Flat tags + relationships<br/>(defer full semantic search)"] --> PR5
+    PR4["Step 4: skill taxonomy<br/>(additive, ~300 lines, in-flight)<br/>Add flat tags + relationships<br/>to rag_research_tool-orbit<br/>Cognee work<br/><b>depends on:</b> in-flight Cognee<br/>work stabilizing<br/>(defer full semantic search)"] --> PR5
 
     PR5["Step 5: marketplace adapters<br/>(only when 2nd consumer appears)<br/>mcp-tooling/extensions/<br/>skill-marketplace/<name>/"]
 
