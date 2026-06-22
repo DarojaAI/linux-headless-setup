@@ -22,9 +22,9 @@ This plan fixes that without creating new Discord bots per channel. Routing iden
 
 **Three concrete components:**
 
-1. **Per-agent `discord.yaml`** in each agent repo (linux-desktop-seed, mcp-tooling, architect, ...). Declares: handle, allowed channels, capabilities, skill/role policies, inter-agent contract version. *Source of truth lives with the agent.*
+1. **Per-agent `.openclaw/agent-config.yaml`** in each agent repo (linux-desktop-seed, mcp-tooling, architect, ...). Declares: handle, allowed channels, capabilities, skill/role policies, inter-agent contract version. *Source of truth lives with the agent.*
 
-2. **Deploy action extension.** The existing per-repo deploy GitHub Action (already automates agent registration) gets a new output: validate `discord.yaml`, generate `agents.lock.toml`, open a PR against `openclaw-gateway`. *The deploy action is the natural place to validate and version it.*
+2. **Deploy action extension.** The existing per-repo deploy GitHub Action (already automates agent registration) gets a new output: validate `agent-config.yaml`, generate `agents.lock.toml`, open a PR against `openclaw-gateway`. *The deploy action is the natural place to validate and version it.*
 
 3. **`openclaw-gateway` registry loader.** Reads `agents.lock.toml` at startup. No webhook, no live-update, no auth surface. Adding an agent = PR lands. Removing = delete the file + PR. *Gateway stays read-only against the registry.*
 
@@ -35,14 +35,14 @@ This plan fixes that without creating new Discord bots per channel. Routing iden
 
 ## 3. The 9 features the registry unlocks
 
-Once `agents.lock.toml` exists, each of these becomes a one-line addition to `discord.yaml` plus a corresponding feature in the gateway's router:
+Once `agents.lock.toml` exists, each of these becomes a one-line addition to `agent-config.yaml` plus a corresponding feature in the gateway's router:
 
 1. **Per-agent capability manifests.** Agents advertise what they're *for*: `capabilities: ["terraform-plan", "vm-provision", "secret-scan"]`. Enables capability-based dispatch: `@mcp-tooling do terraform-plan`.
 2. **Channel-to-agent pinning.** `allowed_channels: ["#darojaai-architect", "#ops"]` enforced by the gateway. Security boundary the P0 contract implicitly assumes and probably doesn't have today.
 3. **Skill/role policies per agent.** `skills: [...], role: "executor" vs "advisor"`. The deploy action provisions the runtime accordingly.
 4. **Versioned inter-agent contracts.** `contract: "v1"` field. Bump it when bridge semantics change. Old agents keep working.
 5. **Health/heartbeat routing.** Deploy action posts a registration heartbeat on successful deploy. Gateway tracks last-seen. Stale agents (no deploy in 30 days, or failed health check) get auto-quarantined — `@linux-desktop-seed` returns "agent offline" instead of routing into a dead runtime.
-6. **Self-documentation.** The compiled `agents.lock.toml` *is* the org map for the AI layer. `audit-org-readmes` (existing skill) extends to flag drifted `discord.yaml` vs. reality.
+6. **Self-documentation.** The compiled `agents.lock.toml` *is* the org map for the AI layer. `audit-org-readmes` (existing skill) extends to flag drifted `agent-config.yaml` vs. reality.
 7. **Cross-agent `@oncall` addressing.** Combine capability + presence: `@oncall terraform question` → online agent with that capability. Replaces tribal knowledge.
 8. **Audit log keyed to org structure.** Every inter-agent bridge call lands in the gateway log with `{from_agent, to_agent, contract_version, capability}`. Queryable, not greppable.
 9. **Soft launch / canary routing.** `canary: true` in the manifest. Gateway routes 10% → new, 90% → previous. Observes, flips. Boring deploys instead of scary ones.
@@ -58,7 +58,7 @@ Once `agents.lock.toml` exists, each of these becomes a one-line addition to `di
 
 **Phase 2 — Lockfile consumption.** Gateway starts reading `agents.lock.toml` at startup. Still no behavior change — routing is hardcoded as before. The lockfile is consumed only as observability (logged at boot, exposed via a debug command). If something is wrong with the lockfile, behavior is unchanged.
 
-**Phase 3 — `@handle` routing.** Gateway routes by `@handle` instead of hardcoded identities. Bot still single Discord surface. Existing agents get a migration path: their handle is set in their new `discord.yaml`, deploy produces a PR that adds them to the lockfile, merge, restart, done.
+**Phase 3 — `@handle` routing.** Gateway routes by `@handle` instead of hardcoded identities. Bot still single Discord surface. Existing agents get a migration path: their handle is set in their new `agent-config.yaml`, deploy produces a PR that adds them to the lockfile, merge, restart, done.
 
 **Phase 4 — Bridge syntax (`@A ask @B`).** One-shot `sessions_send` between runtimes. Loop guard explicit in code: agent responses never trigger another agent. Operator-initiated only.
 
@@ -72,40 +72,38 @@ Features 3 (skill/role policies), 4 (versioned contracts), 6 (self-doc), 7 (cros
 
 These are the ones I wanted operator input on before filing the RFC for `agent.schema.json`:
 
-**Q1. Schema name + location.** Is the per-agent file `discord.yaml`, `agent.toml`, or something else? And does it live at the repo root, in `.openclaw/`, or in `infra/`? My lean: `discord.yaml` at the repo root, mirrors `CODEOWNERS` location, makes it findable. (Naming is hard; `discord.yaml` is honest about the *consumer* — the bot — rather than overpromising about the *purpose*.)
+**Q1. Schema name + location — RESOLVED (operator 2026-06-22).**
+- **File name:** `agent-config.yaml` (operator's suggestion; "specific"). Dropped `discord.yaml` — operator wants the file to describe what it *is* (this agent's config), not what *consumes* it.
+- **Location:** `.openclaw/agent-config.yaml` (my proposal, mirrors `.github/` convention; OpenClaw is the consumer; keeps repo root clean).
+- **Rationale for `.openclaw/`:** OpenClaw is the runtime that reads this file, so the folder names the consumer (consistent with `.github/` being GitHub's config folder). Hidden = no root pollution. Single file in a dedicated folder = trivial to find via `git ls-files .openclaw/`. The runtime's generated `.openclaw/` state (e.g., `workspace-state.json`) is separate concern; source-controlled config can coexist there.
+- **Backup option if `.openclaw/` collides with runtime state:** `agent/agent-config.yaml` (visible folder, also clean). Pick during Phase 1 PR review.
 
-**Q2. Lockfile format.** `agents.lock.toml` (TOML, matches `CODEOWNERS`-adjacent conventions) vs. `agents.lock.json` (JSON, matches GitHub's lockfile-style patterns). My lean: TOML, easier to diff in PRs, comments are legal.
+**Q2. Lockfile format — RESOLVED (operator 2026-06-22).**
+- **Format:** TOML. Operator confirmed. `agents.lock.toml`.
+- Rationale (unchanged from my lean): easier to diff in PRs, comments are legal, matches `CODEOWNERS`-adjacent conventions.
 
-**Q3. Schema authority.** Where does the JSON Schema (or equivalent) for `discord.yaml` live? Options:
-- (a) in `openclaw-gateway` (gateway is the validator).
-- (b) in `DarojaAI/.github` (org-wide standards go there per GOVERNANCE.md).
-- (c) in a new shared repo like `daroja-agent-schema`.
+**Q3. Schema authority — RESOLVED (operator 2026-06-22, picked (a)).**
+- **Authority:** `openclaw-gateway`. Schema lives next to the validator.
+- Operator overrode my lean for (b) `.github`. Their reasoning (implicit): the schema is *implementation-coupled* to the gateway's loader, so colocating it with the consumer makes the upgrade story tighter. RFC for the schema lives in `openclaw-gateway` (not `.github`).
+- **Note:** This is a deviation from the typical "standards in `.github`" pattern. If we ever want to make the schema consumable by tools outside the gateway (e.g., a CLI that validates configs without running the gateway), we'd want a second copy in `.github`. Not blocking; flagged for Phase 5+.
 
-My lean: (b). Schema is a *standard*, not a runtime dependency. RFC in `.github`, schema checked in alongside `CONTRIBUTING.md`.
+**Q4. First consumer — RESOLVED (operator 2026-06-22, picked all three).**
+- **All three agents ship `agent-config.yaml` in Phase 1.** `linux-desktop-seed`, `architect` (this repo), `mcp-tooling`.
+- Operator overrode my lean (sequential). Their reasoning (implicit): rolling out three configs at once proves the deploy-action path handles *diversity* (different repo shapes, different deploy-action invocations), not just one shape repeated.
+- **Phase 1 expands** to: add `.openclaw/agent-config.yaml` to all three repos, deploy action generates the lockfile in all three, one aggregated PR lands in `openclaw-gateway`. Phase 2-6 proceed as originally planned.
 
-**Q4. First consumer.** Which agent repo gets `discord.yaml` first? Three candidates:
-- `linux-desktop-seed` — most active, already has CI/deploy, exercises the deploy-action path end-to-end.
-- `architect` (this repo) — meta, but a useful canary because the user reads my output here daily and notices regressions immediately.
-- `mcp-tooling` — different surface (capability-based), useful for stress-testing Phase 5.
-
-My lean: `linux-desktop-seed` for Phase 1-4 (proves the pipeline), then `architect` for Phase 5 (capabilities are mostly N/A for me but the canary is informative), then `mcp-tooling` for Phase 6+ (real capability routing).
-
-**Q5. Backwards compatibility during Phase 1-2.** Existing deployments already have agents running. How do we roll out without forcing a re-deploy of every agent on day 1? Options:
-- (a) Phase 1 lockfile is *additional* (lives at `agents.lock.next.toml`, ignored by gateway).
-- (b) Phase 1 lockfile is *advisory* (gateway logs warnings if it differs from hardcoded identities, but doesn't act).
-- (c) Phase 1 has no lockfile at all; just the deploy action output.
-
-My lean: (a). Pure additive, zero risk, easy to verify in PR review.
+**Q5. Backwards compatibility — RESOLVED (operator 2026-06-22, picked (a)).**
+- **Phase 1 lockfile is additive.** Lives at `agents.lock.next.toml`, gateway ignores it.
+- Confirms my lean. Pure additive, zero risk, easy to verify in PR review.
 
 ---
 
 ## 6. Affected repos
 
-- **`openclaw-gateway`** — registry loader (Phase 2), `@handle` routing (Phase 3), bridge (Phase 4), capabilities (Phase 5).
-- **`linux-desktop-seed`** (or whatever the canonical deploy action lives in) — first consumer, deploy action extension.
-- **`DarojaAI/.github`** — RFC for `discord.yaml` schema, `agents.lock.toml` format spec.
-- **`mcp-tooling`** — second consumer, capability-driven dispatch stress test.
-- **`darojaai_architect` (this repo)** — third consumer, canary for Phase 5.
+- **`openclaw-gateway`** — schema authority (per Q3), registry loader (Phase 2), `@handle` routing (Phase 3), bridge (Phase 4), capabilities (Phase 5).
+- **`linux-desktop-seed`** (or whatever the canonical deploy action lives in) — Phase 1 consumer, deploy action extension.
+- **`darojaai_architect` (this repo)** — Phase 1 consumer, canary for Phase 5.
+- **`mcp-tooling`** — Phase 1 consumer, capability-driven dispatch stress test for Phase 5+.
 
 ## 7. Migration cost + rollback
 
@@ -113,12 +111,12 @@ My lean: (a). Pure additive, zero risk, easy to verify in PR review.
 - **Rollback:** Each phase is additive and gated. Phase N rollback = revert the PR for Phase N. Earlier phases keep working (lockfile is generated; gateway ignores unused fields).
 - **Risk per phase:** Phase 1 = none. Phase 2 = none (observability only). Phase 3 = medium (could mis-route `@handle`; mitigation: log every routing decision, alert on unknown handles). Phase 4 = medium-high (inter-agent loops possible; mitigation: explicit loop guard in code, not config). Phase 5 = medium (channel enforcement could lock out an agent by typo; mitigation: dry-run mode for one week).
 
-## 8. RFC: `agent.schema.json`
+## 8. RFC: `agent-config.schema.json`
 
-To file in `DarojaAI/.github`:
-- **Title:** `[RFC] discord.yaml schema for org agent identity`
-- **Body:** Schema spec for `discord.yaml` fields, `agents.lock.toml` format, ownership (`.github` per Q3), validation rules.
-- **Status:** DRAFT, gated on Q1-Q5 above being resolved.
+To file in **`openclaw-gateway`** (per Q3):
+- **Title:** `[RFC] agent-config.yaml schema for org agent identity`
+- **Body:** Schema spec for `agent-config.yaml` fields, `agents.lock.toml` format, ownership (`openclaw-gateway`), validation rules.
+- **Status:** READY to file. All 5 open questions resolved (2026-06-22).
 
 ---
 
