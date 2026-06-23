@@ -40,6 +40,23 @@ check "sudoers file exists" test -f /etc/sudoers.d/desktopuser
 # ── Firewall ──
 check "ufw active" bash -c 'ufw status | grep -q "Status: active"'
 
+# ── Docker (for OpenClaw agent sandbox) ──
+# Ref: docs/plans/2026-06-22-agent-test-broke-prod-recovery.md (Layer 2).
+# Without these, the openclaw runtime's docker backend fails at
+# agent-execution time with a permission error — silent failure.
+check "docker installed" command -v docker
+check "docker daemon running" systemctl is-active docker
+check "docker daemon reachable" bash -c 'docker info >/dev/null 2>&1'
+check "desktopuser in docker group" bash -c 'id -nG desktopuser | tr " " "\n" | grep -qx docker'
+# Smoke test as desktopuser (simulating agent runtime). The openclaw
+# runtime will fail with EACCES if this fails — catch it at install time.
+check "docker reachable as desktopuser" bash -c 'su -s /bin/bash desktopuser -c "sg docker -c \"docker info >/dev/null 2>&1\""'
+# Daemon config we wrote in install-docker.sh — explicit so an apt
+# upgrade can't silently change behavior.
+check "daemon.json present" test -f /etc/docker/daemon.json
+check "daemon.json has journald log driver" bash -c 'grep -q "\"log-driver\": \"journald\"" /etc/docker/daemon.json'
+check "daemon.json has userland-proxy=false" bash -c 'grep -q "\"userland-proxy\": false" /etc/docker/daemon.json'
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 
