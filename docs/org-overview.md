@@ -66,9 +66,9 @@ subgraph TRIAD["Intelligence Triad (P0 contract)"]
   KNOW["dev-nexus<br/>Knowledge: patterns · drift · lessons"]
   CAP["mcp-tooling<br/>Capability: Duffel · Cal.com · payments · vm-ops"]
   COORD["openclaw-gateway<br/>L3b · coordination"]
-  KNOW -. "query / verify" .-> CAP
-  CAP --> COORD
-  COORD -. "calls" .-> CAP
+  KNOW -. "declared (A2A+MCP)<br/>no runtime import observed" .-> COORD
+  CAP ==> COORD
+  COORD ==> CAP
 end
 
 subgraph APPS["Application Products"]
@@ -181,6 +181,25 @@ The triad's P0 boundary contract lives at [`DarojaAI/dev-nexus/docs/architecture
 2. **[`DarojaAI/dev-nexus/docs/architecture/architectural-boundaries.md`](https://github.com/DarojaAI/dev-nexus/blob/main/docs/architecture/architectural-boundaries.md)** — the triad's boundary rules. The org's architectural spec.
 
 When this overview conflicts with either contract, **the contracts win**. This doc is a *navigational aid*, not a source of truth.
+
+### Triad wiring status (audited 2026-06-24)
+
+The triad boundary contract defines three systems and a forcing function, but **only one of the three edges is actually wired at runtime** (verified by grepping the source of each repo, not by reading the docs):
+
+| Edge | Status | Evidence |
+|---|---|---|
+| `openclaw-gateway` → `mcp-tooling` | **Wired (runtime)** | `openclaw-gateway/docs/architectural-boundaries.md:113-241` shows `callTool("mcp-tooling.<server>.<action>")` calls in actual code. Duffel, vm-ops confirmed working. |
+| `openclaw-gateway` → `dev-nexus` | Declared (A2A + MCP) | Boundary doc defines `POST /a2a/execute` and `POST /mcp/execute` interfaces (lines 270-282). No import evidence in either repo's source — the wire is *specified*, not *observed*. |
+| `dev-nexus` → `mcp-tooling` | Doc-references only | Boundary doc mentions `mcp-tooling` to define *what doesn't belong in `dev-nexus`*. `mcp-tooling/runtime/base.py:4-9` says `BaseTool` shape mirrors `BaseSkill` (parallel design, not a runtime call). No code imports between the two. |
+
+**Read this section as the ground truth**, not the aspirational diagrams in either boundary doc. The triad is a *governance structure* with one runtime implementation; "the intelligence triad" implies more wiring than currently exists.
+
+### Known stale references in the boundary doc
+
+The boundary doc still references archived repos as live consumers. Filed for cleanup:
+
+- **dev-nexus#1168** — remove `dependency-orchestrator` from the A2A consumer list (operator-confirmed dead 2026-06-24). Patch proposed.
+- `pattern-miner` is also archived and still listed on line 272 of the boundary doc; flagged in the same issue for the dev-nexus maintainer's decision.
 
 ---
 
