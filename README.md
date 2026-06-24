@@ -22,6 +22,8 @@ The full role contract is in [`AGENTS.md`](./AGENTS.md). Read that first.
 | `ARCHITECTURE.md` | Org structure: provisioning stack, intelligence triad, application products, shared infra. |
 | `REPOS.md` | Per-repo inventory with status (`mapped` / `partial` / `unexplored` / `flagged`). |
 | `OPEN_QUESTIONS.md` | Gaps in the architect's knowledge, severity-tagged, awaiting operator input. |
+| `docs/org-overview.md` | CTO-facing one-page summary of the org with a Mermaid diagram. |
+| `diagrams/` | Raw Mermaid source for the org overview diagram. |
 | `memory/YYYY-MM-DD.md` | Daily session notes. |
 | `skills/<name>/SKILL.md` | Procedures the architect follows. See `skills/authoring-skill/SKILL.md` for how to author one. |
 | `USER.md`, `SOUL.md`, `IDENTITY.md`, `TOOLS.md` | OpenClaw runtime identity and persona files (inherited from seed). |
