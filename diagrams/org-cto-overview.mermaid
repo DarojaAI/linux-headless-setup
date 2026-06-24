@@ -1,0 +1,113 @@
+%%{init: {
+  "theme": "neutral",
+  "flowchart": {"curve": "basis", "htmlLabels": true, "nodeSpacing": 40, "rankSpacing": 60},
+  "themeVariables": {
+    "fontSize": "13px",
+    "fontFamily": "ui-sans-serif, system-ui, sans-serif"
+  }
+}}%%
+flowchart TB
+
+%% ============================================================
+%% GOVERNANCE
+%% ============================================================
+subgraph GOV["Governance (P0)"]
+  direction TB
+  GITHUB[".github<br/>GOVERNANCE.md · CI-CD-STANDARDS.md"]
+end
+
+%% ============================================================
+%% SHARED INFRA (cross-cutting, drawn on the left)
+%% ============================================================
+subgraph SHARED["Shared Infrastructure"]
+  direction TB
+  INFRA["infra-actions<br/>composite GitHub Actions"]
+  DEVNEX_COMMON["devnexus-common<br/>LLM client · tracing"]
+  INTEL_FEED["intelligent-feed<br/>per-project activators"]
+  FRONTEND_STARTER["daroja-frontend-starter<br/>Vite 19 + Cloudflare"]
+  GCP_MODULES["GCP Terraform modules<br/>vpc-infra · gcp-postgres · gcp-dbt<br/>gcp-vpc-egress · terraform-gcp-cloudrun-vpc-job<br/>google-cloud-terraform-neo4j"]
+end
+
+%% ============================================================
+%% PROVISIONING STACK (L1 -> L2 -> L3a -> L3b)
+%% ============================================================
+subgraph PROV["Provisioning Stack (bare VM -> Discord agent)"]
+  direction LR
+  L1["L1: VM<br/>terraform-hcloud-linux-vm"]
+  L2["L2: OS<br/>linux-headless-setup<br/>linux-desktop-setup"]
+  L3A["L3a: Ops<br/>linux-desktop-seed"]
+  L3B["L3b: Agent<br/>openclaw-gateway"]
+  L1 --> L2 --> L3A --> L3B
+end
+
+%% ============================================================
+%% INTELLIGENCE TRIAD (knowledge / capability / coordination)
+%% ============================================================
+subgraph TRIAD["Intelligence Triad (P0 contract)"]
+  direction TB
+  KNOW["dev-nexus<br/>Knowledge: patterns · drift · lessons"]
+  CAP["mcp-tooling<br/>Capability: Duffel · Cal.com · payments · vm-ops"]
+  COORD["openclaw-gateway<br/>L3b · coordination"]
+  KNOW -. "query / verify" .-> CAP
+  CAP --> COORD
+  COORD -. "calls" .-> CAP
+end
+
+%% ============================================================
+%% APPLICATION PRODUCTS
+%% ============================================================
+subgraph APPS["Application Products"]
+  direction TB
+  RAG["rag_research_tool<br/>PDF -> vector RAG"]
+  RAG_FE["rag-research-tool-frontend<br/>React UI"]
+  BOND["bond-nexus<br/>TwentyCRM sales pipeline"]
+  TRIP["trip-planning<br/>AI travel assistant"]
+  RO["research-orchestrator<br/>Firecrawl + Cognee"]
+end
+
+%% ============================================================
+%% WIRE-UP: cross-stack edges
+%% ============================================================
+
+%% Provisioning -> triad
+L3A -. "hosts / seeds" .-> COORD
+
+%% Apps -> triad capability
+TRIP == "Duffel flights" ==> CAP
+RO == "Firecrawl / Cognee" ==> CAP
+
+%% Apps -> shared
+RAG --> RAG_FE
+RAG_FE -. "forked from" .-> FRONTEND_STARTER
+RO == "imports activators<br/>INTELLIGENT_FEED_PATH" ==> INTEL_FEED
+INTEL_FEED -. "activates projects" .-> RAG
+INTEL_FEED -. "activates projects" .-> BOND
+
+%% Cross-cutting shared usage
+L3A -. "uses" .-> INFRA
+RAG -. "9 workflows" .-> INFRA
+KNOW -. "7 workflows" .-> INFRA
+L3B -. "uses" .-> DEVNEX_COMMON
+KNOW -. "uses" .-> DEVNEX_COMMON
+CAP -. "uses" .-> DEVNEX_COMMON
+RAG -. "uses" .-> DEVNEX_COMMON
+
+%% Apps on GCP infra
+RAG -. "runs on" .-> GCP_MODULES
+RO -. "runs on" .-> GCP_MODULES
+
+%% Governance
+GITHUB -. "standards" .-> INFRA
+GITHUB -. "DAT contract<br/>no hardcoded envs" .-> L3B
+GITHUB -. "PR/CI requirements" .-> RAG
+
+%% ============================================================
+%% Styling
+%% ============================================================
+classDef stack fill:#eef2ff,stroke:#6366f1,stroke-width:1px,color:#1e1b4b;
+classDef shared fill:#fef3c7,stroke:#f59e0b,stroke-width:1px,color:#78350f;
+classDef gov fill:#fee2e2,stroke:#dc2626,stroke-width:1px,color:#7f1d1d;
+
+class L1,L2,L3A,L3B,KNOW,CAP,COORD,RAG,RAG_FE,BOND,TRIP,RO stack;
+class INFRA,DEVNEX_COMMON,INTEL_FEED,FRONTEND_STARTER,GCP_MODULES shared;
+class GITHUB gov;
