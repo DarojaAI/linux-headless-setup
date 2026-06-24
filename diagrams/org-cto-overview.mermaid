@@ -42,15 +42,18 @@ end
 
 %% ============================================================
 %% INTELLIGENCE TRIAD (knowledge / capability / coordination)
+%% Audited 2026-06-24: only gateway->mcp-tooling is wired at runtime.
+%% dev-nexus<->gateway is declared in the boundary doc, not observed.
+%% dev-nexus<->mcp-tooling is doc-references only (parallel shape).
 %% ============================================================
 subgraph TRIAD["Intelligence Triad (P0 contract)"]
   direction TB
   KNOW["dev-nexus<br/>Knowledge: patterns · drift · lessons"]
   CAP["mcp-tooling<br/>Capability: Duffel · Cal.com · payments · vm-ops"]
   COORD["openclaw-gateway<br/>L3b · coordination"]
-  KNOW -. "query / verify" .-> CAP
-  CAP --> COORD
-  COORD -. "calls" .-> CAP
+  KNOW -. "declared (A2A+MCP)<br/>no runtime import observed" .-> COORD
+  CAP ==> COORD
+  COORD ==> CAP
 end
 
 %% ============================================================
@@ -91,6 +94,15 @@ L3B -. "uses" .-> DEVNEX_COMMON
 KNOW -. "uses" .-> DEVNEX_COMMON
 CAP -. "uses" .-> DEVNEX_COMMON
 RAG -. "uses" .-> DEVNEX_COMMON
+
+%% ============================================================
+%% LEGEND (audited edge semantics, 2026-06-24)
+%%   -->  direct call / data flow
+%%   ==>  confirmed runtime integration
+%%   -.-> "uses" / consumer relationship
+%%   -. "declared (unverified)" .->  contract or doc reference,
+%%                                    no runtime evidence
+%% ============================================================
 
 %% Apps on GCP infra
 RAG -. "runs on" .-> GCP_MODULES
