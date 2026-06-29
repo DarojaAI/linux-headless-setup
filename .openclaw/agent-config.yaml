@@ -1,0 +1,11 @@
+handle: "@darojaai-architect"
+contract_version: "v1"
+role: "advisor"
+capabilities:
+  - "architect-review"
+  - "design-rfc"
+allowed_channels:
+  - "#darojaai-architect"
+skills:
+  - "audit-org-readmes"
+  - "authoring-skill"
