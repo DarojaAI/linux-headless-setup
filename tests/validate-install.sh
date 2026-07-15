@@ -24,7 +24,7 @@ check "ssh installed" bash -c 'test -f /usr/sbin/sshd'
 check "curl installed" command -v curl
 check "git installed" command -v git
 check "jq installed" command -v jq
-check "node installed (v22)" bash -c 'node -v | grep -q "^v22"'
+check "node installed (v22 or v24)" bash -c 'node -v | grep -qE "^v(22\.|24\.)"'
 check "python3 installed" command -v python3
 check "pip installed" command -v pip3
 
