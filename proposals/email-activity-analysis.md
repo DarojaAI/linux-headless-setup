@@ -2,8 +2,8 @@
 
 > **Author:** darojaai_architect
 > **Date:** 2026-07-24
-> **Status:** Decisions received — ready for implementation planning
-> **Decisions recorded:** L1+L2 scope, Gmail+Exchange, LLM-first+rules, OpenRouter API, same repo, compliance day 1, Enron start, config-driven taxonomy, in-customer deployment
+> **Status:** Decisions received — ready for implementation planning  
+> **Decisions recorded:** L1+L2 scope, Gmail+Exchange, LLM-first+rules, customer-choice LLM via adapted devnexus-common, same repo, compliance day 1, Enron start, config-driven taxonomy, in-customer deployment
 
 ---
 
@@ -152,7 +152,8 @@ L1+L2 for MVP. Build the connector architecture to accommodate L3 later without 
 
 ### Implications
 - System ships as standalone container (not an MCP server requiring gateway)
-- Classification uses OpenRouter API (operator decision) — container needs API key config
+- Classification uses customer's LLM provider via adapted devnexus-common (see §9b)
+- Container ships with SDK dependencies for all supported providers; config selects which one
 - Metrics export via API or file, not database connection
 - Calendar integration is a module within the same container, not a separate service
 
@@ -183,7 +184,7 @@ L1+L2 for MVP. Build the connector architecture to accommodate L3 later without 
 │  ┌──────────────────────────────────────────────┐        │
 │  │  Track A: LLM Classifier (primary)          │        │
 │  │  - Prompt-based, configurable categories     │        │
-│  │  - OpenRouter API (gpt-4o-mini or similar)   │        │
+│  │  - Customer's LLM (via devnexus-common)      │        │
 │  │  - Returns: category + confidence + reasoning│        │
 │  └──────────────┬───────────────────────────────┘        │
 │                 │                                        │
@@ -265,7 +266,7 @@ L1+L2 for MVP. Build the connector architecture to accommodate L3 later without 
 
 #### email-analytics-pipeline (module within email-analytics)
 - **Classification approach (LLM-first, rules-complemented):**
-  - **Track A — LLM Classification (primary):** Prompt-based using configurable categories, OpenRouter API, returns category + confidence + reasoning
+  - **Track A — LLM Classification (primary):** Prompt-based using configurable categories, customer-choice LLM via adapted devnexus-common (see §9b), returns category + confidence + reasoning
   - **Track B — Rules Engine (complementary):** Deterministic patterns for obvious cases and metrics. Especially important for metrics (operator decision)
   - **Track C — Lightweight Classifier (future):** Train SVC on LLM labels when training data accumulates. Not needed for MVP.
   - **Confidence Resolver:** Rules > LLM high-confidence > flag for review
@@ -394,7 +395,7 @@ After reading the taxonomy curator code (`src/rag/agents/taxonomy_curator/`, `sr
 3. **Rule-based fallback** (`DOMAIN_KEYWORDS` dict) — keyword matching when LLM unavailable
 4. **Taxonomy curator agent** (LangGraph) — detects unknown domains, generates proposals (NEW_DOMAIN / ALIAS_OF / UNCATEGORIZED)
 5. **Review workflow** (LangGraph) — LLM evaluates proposals, flags high-risk changes, notifies operator via Discord, 48h override window
-6. **Shared LLM client** via `devnexus-common` (`common.llm.get_llm_client`) with OpenRouter routing
+6. **Shared LLM client** via `devnexus-common` (`common.llm.get_llm_client`), multi-provider (see §9b)
 
 ### What's genuinely reusable (pattern-level)
 
@@ -406,7 +407,7 @@ After reading the taxonomy curator code (`src/rag/agents/taxonomy_curator/`, `sr
 | Confidence scoring + threshold | LLM returns confidence float | LLM returns confidence float | ✅ Identical |
 | Human-in-the-loop review | LangGraph review graph + Discord | Operator reviews low-confidence | ⚠️ Simpler version needed |
 | Domain proposal workflow | NEW_DOMAIN / ALIAS_OF / UNCATEGORIZED | Taxonomy evolution | ✅ Same workflow |
-| Shared LLM client (OpenRouter) | `common.llm.get_llm_client` | Same | ✅ Direct reuse |
+| Shared LLM client (multi-provider) | `common.llm.get_llm_client` | Same | ✅ Direct reuse with adaptation |
 
 ### What's NOT reusable (domain-level)
 
@@ -510,14 +511,89 @@ Built in from day 1 (operator decision). This shapes the system fundamentally.
 
 ---
 
+
+## 9b. LLM Provider Adaptation (devnexus-common)
+
+**Operator decision:** The system must use the customer's LLM of choice, sourced from their environment. OpenRouter is not viable for in-customer deployment (network restrictions, policy). `devnexus-common`'s LLM client must be adapted.
+
+### Current state (`common.llm.client`)
+
+The existing client supports exactly two providers:
+- **`AnthropicClient`** — uses the `anthropic` Python SDK
+- **`OpenRouterClient`** — uses raw HTTP to OpenRouter's OpenAI-compatible API (`/v1/chat/completions`)
+- Factory: `get_llm_client(provider, api_key)` — only accepts `"anthropic"` or `"openrouter"`
+- Config: `get_llm_client_from_config(config)` — reads `llm_provider`, defaults to `"anthropic"`
+
+### What in-customer deployment needs
+
+| Provider | Connection method | Already supported? |
+|---|---|---|
+| OpenAI direct | OpenAI SDK | ❌ |
+| Azure OpenAI | Azure SDK or REST with endpoint + API version | ❌ |
+| Anthropic direct | Anthropic SDK | ✅ |
+| OpenRouter | OpenAI-compatible REST | ✅ |
+| Google Vertex AI | Vertex SDK or REST | ❌ |
+| Local Ollama | OpenAI-compatible REST (`localhost:11434`) | ❌ |
+| Any OpenAI-compatible | OpenAI-compatible REST | ❌ |
+
+**Key insight:** OpenRouter, Ollama, and many others all use the same OpenAI-compatible chat completions API (`/v1/chat/completions`). The `OpenRouterClient` is already 90% a generic OpenAI-compatible client — it just hardcodes the base URL and headers.
+
+### Proposed adaptation
+
+1. **Rename `OpenRouterClient` → `OpenAICompatibleClient`** — make base URL, API key, and custom headers configurable. This covers OpenRouter, Ollama, Azure OpenAI, and any self-hosted endpoint.
+
+2. **Add `OpenAIClient`** — native OpenAI SDK (separate from OpenAI-compatible REST, since the SDK handles retries, streaming, etc.).
+
+3. **Add `AzureOpenAIClient`** — Azure-specific auth (endpoint + API key or managed identity, API version parameter).
+
+4. **Expand the factory:** `get_llm_client(provider, api_key, base_url=None)`:
+   - `"openai"` → OpenAI SDK
+   - `"anthropic"` → Anthropic SDK (existing)
+   - `"openai-compatible"` / `"openrouter"` / `"ollama"` → `OpenAICompatibleClient` with configurable base_url
+   - `"azure-openai"` → `AzureOpenAIClient`
+
+5. **Config-driven selection:**
+   ```yaml
+   llm_config:
+     provider: "openai-compatible"  # or "openai", "anthropic", "azure-openai", "ollama"
+     base_url: "http://localhost:11434/v1"  # customer's endpoint
+     api_key: ""  # from env var or secret manager
+     model: "gpt-4o-mini"
+   ```
+
+6. **Environment variable cascade:**
+   ```
+   LLM_PROVIDER → llm_config.provider
+   LLM_BASE_URL → llm_config.base_url
+   LLM_API_KEY → provider-specific fallback
+   LLM_MODEL → llm_config.model
+   ```
+
+### Impact on email-analytics
+
+- `email-analytics` calls `get_llm_client_from_config(config)` — provider-agnostic
+- Docker image ships with SDK dependencies for all providers (or extras: `pip install common[openai]`, `pip install common[anthropic]`, etc.)
+- Classification code (`client.create_message()`) never changes regardless of backend
+- The customer configures their provider at deploy time via config file or environment variables
+
+### Scope
+
+This adaptation is **in scope for this project** per operator decision. It benefits not just `email-analytics` but all future DarojaAI projects that deploy in-customer (the LLM client is shared infrastructure).
+
+### Effort
+
+~1-2 weeks for the `devnexus-common` adaptation, on top of the existing client. This overlaps with Phase 1 (dataset development) since the classifier can use any provider during development.
+
+---
+
 ## 10. Decisions Log
 
 | # | Question | Decision | Notes |
 |---|---|---|---|
 | D1 | Scope: which data layers? | L1+L2 (email + calendar) | L3 deferred |
 | D2 | Email sources? | Gmail + Exchange/Microsoft (primary) | IMAP as generic fallback |
-| D3 | Classification? | LLM-first (OpenRouter API), rules-complemented | Rules especially for metrics |
-| D4 | Local LLM vs API? | API (OpenRouter) | Local deferred to future optimization |
+| D3 | Classification? | LLM-first, rules-complemented | Rules especially for metrics |
+| D4 | LLM provider? | Customer's choice | Any provider via adapted devnexus-common (see §9b) |
 | D5 | Dashboard? | Same repo; graphic generation initially, not a dashboard | May add dashboard later |
 | D6 | Compliance? | Build in from day 1 | Privacy architecture shapes the system |
 | D7 | Dataset? | Enron to start, supplement quickly | EMC-2 + others |
@@ -532,11 +608,14 @@ Built in from day 1 (operator decision). This shapes the system fundamentally.
 | Phase | Duration | Deliverable |
 |---|---|---|
 | Phase 1: Dataset dev + classifier validation | 3-4 weeks | Validated classifier on Enron, hand-labeled validation set |
+| Phase 1a: devnexus-common LLM adaptation | 1-2 weeks | Multi-provider LLM client (overlaps with Phase 1) |
 | Phase 2: Pipeline build | 4-5 weeks | Working email-connector + analytics pipeline (Gmail + Exchange + Calendar) |
 | Phase 3: Graphic + deployment | 2-3 weeks | Graphic generation, Docker packaging, in-customer deployment |
 | **Total MVP** | **~9-12 weeks** | |
 | Phase 2 enhancement (task management) | +4-6 weeks | L3 data layer |
 | Phase 3 enhancement (SaaS/hybrid) | +3-4 weeks | Multi-tenant, remote metrics |
+
+Note: Phase 1a (LLM adaptation) overlaps with Phase 1 — the classifier can use whatever provider is available during development while the multi-provider client is being built.
 
 ---
 
@@ -549,7 +628,7 @@ Built in from day 1 (operator decision). This shapes the system fundamentally.
 | Privacy backlash | Project killed | Aggregate-only, opt-in, in-customer deployment |
 | Email connector edge cases | Incomplete data | Graceful degradation; partial data still useful |
 | Time estimation heuristics too rough | Numbers don't match reality | Directional only; validate against time-tracking if available |
-| OpenRouter API dependency in-customer | Network restrictions | Design for API key config; future: local LLM option |
+| Customer LLM provider mismatch | Network/policy restrictions | Adapt devnexus-common for multi-provider (see §9b) |
 | Taxonomy doesn't map cleanly between rag_research_tool and email-analytics | Reusable pattern but not identical | Accept: same architecture, different domain definitions. Extract shared lib only after third consumer. |
 
 ---
@@ -557,12 +636,13 @@ Built in from day 1 (operator decision). This shapes the system fundamentally.
 ## 13. Next Steps
 
 1. ~~Decisions received~~ ✅
-2. Clone Enron dataset into `_context/` for initial analysis
-3. Build hand-labeled validation set (200-500 emails from Enron)
-4. Prototype LLM classifier on Enron-Meetings subset
-5. Measure accuracy → iterate on taxonomy YAML
-6. Build email-connector (Gmail API first, then Exchange)
-7. Wire classification pipeline + metrics aggregation
-8. Build graphic generator (concentric ring charts)
-9. Package as Docker, test in-customer deployment
-10. File RFC in `.github` for new repo creation (if separate repo warranted)
+2. **Adapt devnexus-common LLM client** (§9b) — add OpenAI, Ollama, Azure OpenAI, and generic OpenAI-compatible providers
+3. Clone Enron dataset into `_context/` for initial analysis
+4. Build hand-labeled validation set (200-500 emails from Enron)
+5. Prototype LLM classifier on Enron-Meetings subset
+6. Measure accuracy → iterate on taxonomy YAML
+7. Build email-connector (Gmail API first, then Exchange)
+8. Wire classification pipeline + metrics aggregation
+9. Build graphic generator (concentric ring charts)
+10. Package as Docker, test in-customer deployment
+11. File RFC in `.github` for new repo creation (if separate repo warranted)
