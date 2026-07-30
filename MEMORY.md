@@ -1,7 +1,7 @@
 # MEMORY.md — Long-term Org Knowledge
 
 > **Main session only.** Do not load in shared/group contexts.
-> **Distilled from:** session work, `ARCHITECTURE.md`, `REPOS.md`, `OPEN_QUESTIONS.md`. Last curated 2026-06-14.
+> **Distilled from:** session work, `ARCHITECTURE.md`, `REPOS.md`, `OPEN_QUESTIONS.md`. Last curated 2026-07-30.
 
 ---
 
@@ -30,6 +30,8 @@ A small GitHub org (~42 repos) building a stack that goes from bare cloud VM to 
 7. **Skills ≠ memory.** Memory (`MEMORY.md`) is broad and declarative. Skills (`skills/<name>/SKILL.md`) are narrow and actionable — procedures I follow. The forcing function: "if I'd do this same procedure again, it's a skill." Full rules in `AGENTS.md` and `skills/authoring-skill/SKILL.md`.
 8. **Shared libraries category is coming (Q4).** Approved by operator 2026-06-14. The "Shared Libraries & Templates" category is the proposed name. Repos that fit: `infra-actions`, `devnexus-common` (→ `py-daroja-libs`), `daroja-frontend-starter`, `intelligent-feed`. Action: file `[RFC]` in `.github` with the proposal. Same template used for the AGENTS.md RFC (`.github#1`).
 9. **The `-1` suffix convention means "fork-of-fork, the one we use" (Q3).** Both `google-cloud-terraform-neo4j*` repos are fork-of-fork: operator originally forked from external source intending to propose a PR upstream; upstream was unpinned so they created a fork-of-fork (the `-1` suffix), which has a version tag and is the active one. **The same explanation likely covers `pattern-miner` and `dependency-orchestrator`** (both archived per Q1/Q2). Pattern to remember: `-1` is *not* a duplication smell; it's a "this is the load-bearing fork" marker.
+10. **Git tags in shared libs can lag HEAD (2026-07-30 incident, devnexus-common v1.13.1).** The release workflow tagged `v1.13.1` from a commit *before* PR #68 (which added `LLMClient.embed()`) merged, so consumers pinning `@v1.13.1` got the old API. **Rule:** when consuming a shared lib from a fork via `git+https://...@<ref>`, prefer the merge-commit SHA over a tag if the tag was created in the same window as the PR merge. Verify with `git ls-remote <url> <tag>` if in doubt. **Tag-vs-SHA pinning is now documented in PR comments for shared-lib bumps.**
+11. **`LLMClient.embed()` is the standard embedding API (devnexus-common v1.13.1+).** Returns `EmbeddingResponse` with `.embeddings` (list of float vectors). Wraps `/v1/embeddings` POST, propagates per-caller `http_referer`/`x_title` for OpenRouter attribution, tracks token usage. `rag_research_tool` migrated 3 files off raw `requests.post` in PR #1276. No more direct embedding-API calls in repo source.
 
 ## Open architectural hypotheses (not yet confirmed)
 
