@@ -29,7 +29,7 @@ check "python3 installed" command -v python3
 check "pip installed" command -v pip3
 
 # ── Services ──
-check "sshd running" systemctl is-active sshd
+check "sshd running" bash -c 'systemctl is-active ssh >/dev/null 2>&1 || systemctl is-active sshd'
 check "fail2ban running" systemctl is-active fail2ban
 check "node_exporter running" systemctl is-active node_exporter
 
