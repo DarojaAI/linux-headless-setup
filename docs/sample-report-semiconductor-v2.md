@@ -1,7 +1,7 @@
 # European Semiconductor Manufacturing: Facility Location Assessment
 
 > **Engagement:** Warehouse & Finishing Facility Location — Semiconductor Industry
-> **Methodology:** Magentis Process v1.0
+> **Methodology:** European Manufacturing Assessment Framework
 > **Date:** 2026-08-05
 > **Status:** Sample deliverable v2 — with live data from ECB RESC, Eurostat, and broker reports
 
@@ -446,4 +446,4 @@ For cost optimization, a secondary finishing facility in Wrocław (PL51) offers:
 
 ---
 
-*This report was produced using the Magentis Process v1.0 methodology. All data claims are tagged with confidence tiers. Live data queried from ECB RESC and Eurostat SDMX APIs. Broker report data extracted via web_fetch from publicly accessible sources. See `docs/magentis-process.md` for the full assessment framework.*
+*This report was produced using the European Manufacturing Assessment Framework. All data claims are tagged with confidence tiers. Live data queried from ECB RESC and Eurostat SDMX APIs. Broker report data extracted via web_fetch from publicly accessible sources.*
