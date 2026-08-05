@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 0.85in; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1C1A16; font-size: 14px; line-height: 1.6; margin: 0; padding: 0; }
+  h1, h2, h3 { font-weight: 200; letter-spacing: -0.02em; color: #1C1A16; margin: 0; }
+  h1 { font-size: 42px; line-height: 1.0; }
+  h2 { font-size: 26px; margin-bottom: 16px; }
+  h3 { font-size: 17px; font-weight: 300; margin-bottom: 8px; }
+  .eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: #1C1A16; opacity: 0.55; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #E6B340; flex: none; }
+  .bar { height: 3px; width: 32px; margin-bottom: 16px; }
+  .gold { color: #E6B340; font-style: italic; }
+  .mono { font-family: 'Courier New', monospace; letter-spacing: 0.04em; }
+  .rule { border: none; border-top: 1px solid rgba(28,26,22,0.10); margin: 0; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+  th { text-align: left; font-size: 10px; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; padding: 8px 10px; border-bottom: 1px solid rgba(28,26,22,0.18); }
+  td { font-size: 13px; padding: 7px 10px; border-bottom: 1px solid rgba(28,26,22,0.10); line-height: 1.4; }
+  .stat-grid { display: flex; gap: 1px; background: rgba(28,26,22,0.10); margin: 24px 0; }
+  .stat-card { flex: 1; padding: 18px; background: #F5F0E8; }
+  .stat-num { font-size: 30px; font-weight: 200; letter-spacing: -0.02em; }
+  .stat-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.55; margin-top: 4px; }
+  .page-break { page-break-before: always; }
+  .cover { min-height: 9in; display: flex; flex-direction: column; justify-content: space-between; }
+  .toc-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(28,26,22,0.10); font-size: 14px; }
+  p { margin: 0 0 10px 0; }
+  .small { font-size: 11px; opacity: 0.6; }
+  sup.fn { font-size: 9px; color: #E6B340; font-weight: 500; vertical-align: super; }
+  .footnotes { margin-top: 30px; padding-top: 16px; border-top: 1px solid rgba(28,26,22,0.18); }
+  .fn { font-size: 11px; line-height: 1.5; margin-bottom: 4px; color: rgba(28,26,22,0.7); }
+  .fn-num { font-family: 'Courier New', monospace; font-weight: 500; color: #E6B340; margin-right: 4px; }
+  .fn em { font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div>
+    <div class="eyebrow"><span class="dot"></span>CLIENT REPORT</div>
+    <div style="height:60px"></div>
+    <h1>European Semiconductor Manufacturing<br><span class="gold">Facility Location Assessment</span></h1>
+    <p style="font-size:16px; max-width:500px; margin-top:18px; opacity:0.75;">Warehouse &amp; finishing facility location analysis for the semiconductor industry, covering the Saxony/Dresden corridor and alternative European sites.</p>
+  </div>
+  <div>
+    <hr class="rule" style="margin-bottom:18px;">
+    <div style="display:flex; justify-content:space-between; font-size:13px;">
+      <div><div class="mono small">PREPARED FOR</div><div style="margin-top:3px;">[Client Organisation]</div></div>
+      <div><div class="mono small">PREPARED BY</div><div style="margin-top:3px;">DarojaAI</div></div>
+      <div><div class="mono small">DATE</div><div class="mono" style="margin-top:3px;">August 2026</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>CONTENTS</div>
+<h2>Table of Contents</h2>
+<div class="toc-row"><span>01 — Executive Summary</span><span class="mono">03</span></div>
+<div class="toc-row"><span>02 — Semiconductor Footprint</span><span class="mono">04</span></div>
+<div class="toc-row"><span>03 — Location Assessment</span><span class="mono">05</span></div>
+<div class="toc-row"><span>04 — European Logistics Market</span><span class="mono">06</span></div>
+<div class="toc-row"><span>05 — Recommendations</span><span class="mono">07</span></div>
+<div class="toc-row"><span>06 — Roadmap</span><span class="mono">08</span></div>
+<div class="toc-row"><span>Appendix — Data Sources &amp; Confidence</span><span class="mono">09</span></div>
+<div class="toc-row"><span>References</span><span class="mono">10</span></div>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>01 — EXECUTIVE SUMMARY</div>
+<div class="bar" style="background:#E6B340;"></div>
+<h2>Where things stand<span class="gold"> today</span></h2>
+<p>European semiconductor manufacturing is concentrating in a single corridor: Saxony/Dresden, Germany. With over €17B in committed investment across four major fabs — ESMC/TSMC (€10B+)<sup class="fn">[3]</sup>, Infineon Smart Power Fab (€5B, opened July 2026)<sup class="fn">[3]</sup>, GlobalFoundries SPRINT (€1.1B)<sup class="fn">[3]</sup>, and Bosch (€1B)<sup class="fn">[3]</sup> — Dresden is now Europe's largest semiconductor manufacturing cluster. Secondary clusters exist in the Czech Republic (onsemi SiC, €1.64B)<sup class="fn">[5]</sup>, the Netherlands (NXP/ASML), Ireland (Intel), and France (STMicro Agrate, €1B)<sup class="fn">[3]</sup>, but none approach the scale or density of the Saxony corridor.</p>
+<p>Commercial real estate markets across Europe are in structural consolidation. Prime logistics rents grew +2.7% YoY in Q1 2026 across 45 European markets<sup class="fn">[BNP]</sup>, but growth is decelerating. The EU27 commercial property price index stands at 114.1 (Q4 2025)<sup class="fn">[ECB]</sup>, up 13.7% from the 2015 base but flat since Q1 2024 — indicating a market that has stabilised after post-pandemic repricing.</p>
+<p><strong>Primary recommendation:</strong> Establish the finishing/warehouse facility in the Saxony/Dresden corridor (NUTS-2: DE80). Proximity to €17B+ in customer manufacturing, same-day logistics to all four major fabs, established transport infrastructure, and access to Silicon Saxony's 130+ company ecosystem make this the optimal location. Prime logistics rents in German Big Five hubs sit at approximately €60–120/sqm/year<sup class="fn">[IF]</sup>, with prime yields stabilising at ~4.5%<sup class="fn">[Sav]</sup>.</p>
+<p><strong>Alternative recommendation:</strong> Wrocław/Lower Silesia (NUTS-2: PL51) as a lower-cost satellite — 40–50% lower industrial rents<sup class="fn">[IF]</sup>, rail-linked to Dresden (2.5 hours), and growing automotive/battery cluster provides demand diversification. Poland's logistics market is forecast to see the strongest demand growth rates in Europe in 2026, with investment volumes projected to rise 19%<sup class="fn">[Sav]</sup>. A dual-site strategy merits evaluation.</p>
+<div class="stat-grid">
+  <div class="stat-card"><div class="stat-num">€17.1B+</div><div class="stat-label">Committed Investment (Dresden)</div></div>
+  <div class="stat-card"><div class="stat-num">€60–120</div><div class="stat-label">Prime Logistics Rent (€/sqm/yr, DE)</div></div>
+  <div class="stat-card"><div class="stat-num">4.5%</div><div class="stat-label">Prime Logistics Yield (Germany)</div></div>
+</div>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>02 — SEMICONDUCTOR MANUFACTURING FOOTPRINT</div>
+<div class="bar" style="background:#3299BB;"></div>
+<h2>Current state &amp; forward projection</h2>
+<p>Seven major semiconductor facilities are committed or under construction across Europe, with ~€20.8B in confirmed investment. Dresden accounts for 77% of European semiconductor capex.</p>
+<table>
+<thead><tr><th>Facility</th><th>Company</th><th>Investment</th><th>Location</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>ESMC</td><td>TSMC/Bosch/Infineon/NXP</td><td class="mono">€10B+</td><td>Dresden (DE80)</td><td>Dragon-tram ceremony Jun 2026; production late 2027<sup class="fn">[3]</sup></td></tr>
+<tr><td>Smart Power Fab</td><td>Infineon</td><td class="mono">€5B</td><td>Dresden (DE80)</td><td><strong>Opened July 2, 2026</strong><sup class="fn">[3]</sup></td></tr>
+<tr><td>SPRINT</td><td>GlobalFoundries</td><td class="mono">€1.1B</td><td>Dresden (DE80)</td><td>Construction started Mar 2026; >1M wafers/yr by 2028<sup class="fn">[3]</sup></td></tr>
+<tr><td>Semiconductor facility</td><td>Bosch</td><td class="mono">€1B</td><td>Dresden (DE80)</td><td>Under construction<sup class="fn">[3]</sup></td></tr>
+<tr><td>Agrate R3</td><td>STMicro</td><td class="mono">€1B</td><td>Agrate Brianza (ITC4)</td><td>Under construction; Tower partner<sup class="fn">[3]</sup></td></tr>
+<tr><td>SiC Facility</td><td>onsemi</td><td class="mono">€1.64B</td><td>Rožnov pod Radhoštěm (CZ07)</td><td>€450M state aid approved Nov 2025; production 2027<sup class="fn">[5]</sup></td></tr>
+<tr><td>Expansion</td><td>NXP</td><td class="mono">Undisclosed</td><td>Dresden (DE80)</td><td>In progress<sup class="fn">[3]</sup></td></tr>
+</tbody>
+</table>
+<h3>5–10 Year Projection</h3>
+<p>Committed investment totals ~€20.8B. Pipeline projects — including Chips Act 2.2 IPCEI funding (adoption targeted Q2 2027)<sup class="fn">[1]</sup>, advanced packaging investments, and a 3–5× supplier multiplier — project the broader Dresden semiconductor ecosystem to reach €30–40B by 2032.</p>
+<p>Customer demand is diversified across automotive (largest), industrial/power semiconductors, and defence. EU defence spending reached €418B in 2025 (+20% YoY), projected €454B in 2026<sup class="fn">[9]</sup>. Defence investment: €134B in 2025, projected €163B in 2026<sup class="fn">[9]</sup>. EDIP first calls launched for ammunition, missiles, and explosive weapons<sup class="fn">[11]</sup>.</p>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>03 — LOCATION ASSESSMENT</div>
+<div class="bar" style="background:#708238;"></div>
+<h2>Saxony/Dresden<span class="gold"> vs. alternatives</span></h2>
+<h3>Dresden Corridor (DE80) — Primary</h3>
+<table>
+<thead><tr><th>Indicator</th><th>Value</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>GDP per capita (2022)</td><td class="mono">€38,688</td><td>Eurostat nama_10r_2gdp<sup class="fn">[ES]</sup></td></tr>
+<tr><td>GDP (2020)</td><td class="mono">€47.3B</td><td>Eurostat NAMA_10R_2GDP<sup class="fn">[18]</sup></td></tr>
+<tr><td>GDP (2024)</td><td class="mono">€61.6B</td><td>Eurostat NAMA_10R_2GDP<sup class="fn">[18]</sup></td></tr>
+<tr><td>GDP growth (2020–2024)</td><td class="mono">+30.2%</td><td>Derived from [18]</td></tr>
+<tr><td>EU27 commercial property index</td><td class="mono">114.1 (Q4 2025)</td><td>ECB RESC<sup class="fn">[ECB]</sup></td></tr>
+<tr><td>German prime logistics rent</td><td class="mono">€60–120/sqm/yr</td><td>IndiFind / Savills<sup class="fn">[IF][Sav]</sup></td></tr>
+<tr><td>German prime logistics yield</td><td class="mono">~4.5% NIY</td><td>Savills 2026<sup class="fn">[Sav]</sup></td></tr>
+<tr><td>German logistics take-up</td><td class="mono">+18% YTD</td><td>Savills 2026<sup class="fn">[Sav]</sup></td></tr>
+<tr><td>Existing cluster</td><td colspan="2">Silicon Saxony: 130+ companies, 50,000+ jobs; 4 fabs within 30km<sup class="fn">[3]</sup></td></tr>
+</tbody>
+</table>
+<h3>Wrocław / Lower Silesia (PL51) — Alternative</h3>
+<table>
+<thead><tr><th>Indicator</th><th>Value</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>GDP per capita (2022)</td><td class="mono">€22,800</td><td>Eurostat nama_10r_2gdp<sup class="fn">[ES]</sup></td></tr>
+<tr><td>GDP (2020)</td><td class="mono">€44.4B</td><td>Eurostat NAMA_10R_2GDP<sup class="fn">[18]</sup></td></tr>
+<tr><td>GDP (2024)</td><td class="mono">€70.2B</td><td>Eurostat NAMA_10R_2GDP<sup class="fn">[18]</sup></td></tr>
+<tr><td>GDP growth (2020–2024)</td><td class="mono">+57.9%</td><td>Derived from [18]</td></tr>
+<tr><td>Industrial rent</td><td class="mono">€30–60/sqm/yr</td><td>IndiFind market guide<sup class="fn">[IF]</sup></td></tr>
+<tr><td>Prime logistics yield</td><td class="mono">5.75–6.00%</td><td>Savills 2026<sup class="fn">[Sav]</sup></td></tr>
+<tr><td>Investment outlook</td><td class="mono">+19% volume 2026</td><td>Savills 2026<sup class="fn">[Sav]</sup></td></tr>
+<tr><td>Key facilities</td><td colspan="2">LG Energy Solution (battery), Mercedes-Benz Jawor (eSprinter, €360M)<sup class="fn">[14]</sup></td></tr>
+</tbody>
+</table>
+<h3>Other Alternatives Assessed</h3>
+<p><strong>Czech Republic (CZ07):</strong> onsemi SiC fab, €1.64B, rent €25–50/sqm/yr<sup class="fn">[IF]</sup>. Single-fab cluster, onsemi facing Chinese SiC competition. <strong>Netherlands:</strong> €70–130/sqm/yr, severe space scarcity (47% take-up decline)<sup class="fn">[Sav]</sup>, power grid congestion (66% of logistics properties affected). <strong>Ireland:</strong> ~€150/sqm/yr<sup class="fn">[Erena]</sup>, geographically peripheral, single-fab.</p>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>04 — EUROPEAN LOGISTICS MARKET</div>
+<div class="bar" style="background:#B34A35;"></div>
+<h2>Market context<span class="gold"> (Q1 2026)</span></h2>
+<table>
+<thead><tr><th>Metric</th><th>Value</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>Pan-European prime rent growth</td><td class="mono">+2.7% YoY (45 markets, 21 countries)</td><td>BNP Paribas Q1 2026<sup class="fn">[BNP]</sup></td></tr>
+<tr><td>European logistics investment</td><td class="mono">€40.6B in 2025 (UK: €11.3B)</td><td>CBRE via Erena<sup class="fn">[Erena]</sup></td></tr>
+<tr><td>Pan-European prime yield</td><td class="mono">~4.7% NIY</td><td>Knight Frank via Erena<sup class="fn">[Erena]</sup></td></tr>
+<tr><td>CBRE rental growth forecast</td><td class="mono">~1.8% for 2026</td><td>CBRE via Erena<sup class="fn">[Erena]</sup></td></tr>
+</tbody>
+</table>
+<h3>Prime Rents by City (Grade A Logistics)</h3>
+<table>
+<thead><tr><th>City</th><th>Rent (€/sqm/yr)</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>London</td><td class="mono">~€360</td><td>Knight Frank via Erena<sup class="fn">[Erena]</sup></td></tr>
+<tr><td>Dublin</td><td class="mono">~€150</td><td>Knight Frank via Erena<sup class="fn">[Erena]</sup></td></tr>
+<tr><td>Berlin</td><td class="mono">€90–110</td><td>Knight Frank / IndiFind<sup class="fn">[Erena][IF]</sup></td></tr>
+<tr><td>Amsterdam</td><td class="mono">€90–110</td><td>Knight Frank / IndiFind<sup class="fn">[Erena][IF]</sup></td></tr>
+<tr><td>Paris</td><td class="mono">€70–100</td><td>IndiFind<sup class="fn">[IF]</sup></td></tr>
+<tr><td>Warsaw</td><td class="mono">€40–60</td><td>IndiFind / Savills<sup class="fn">[IF][Sav]</sup></td></tr>
+<tr><td>Wrocław</td><td class="mono">€30–60</td><td>IndiFind (derived)<sup class="fn">[IF]</sup></td></tr>
+<tr><td>Prague</td><td class="mono">€30–50</td><td>IndiFind<sup class="fn">[IF]</sup></td></tr>
+</tbody>
+</table>
+<h3>Key Market Themes</h3>
+<p><strong>1. Supply constraints dominate.</strong> Planning, power grid capacity, and permitting restrict new development more than demand weakness. Completions will decrease in 2026 as speculative pipelines remain controlled.<sup class="fn">[Erena]</sup></p>
+<p><strong>2. Prime vs. secondary bifurcation widening.</strong> Grade A, automation-ready stock in prime corridors absorbs quickly; secondary locations struggle.<sup class="fn">[Sav]</sup></p>
+<p><strong>3. Power grid is the new bottleneck.</strong> Connection timelines extending across Europe, rationing large-scale development. Germany, Netherlands, and Poland all affected.<sup class="fn">[Sav]</sup></p>
+<p><strong>4. Manufacturing occupiers active in CEE.</strong> Poland: strongest demand growth forecast in Europe 2026.<sup class="fn">[Sav]</sup></p>
+<p><strong>5. Investment capital returning.</strong> Core institutional investors re-entering. Cross-border capital at 62% of volumes.<sup class="fn">[Sav]</sup></p>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>05 — RECOMMENDATIONS</div>
+<div class="bar" style="background:#708238;"></div>
+<h2>What to do<span class="gold"> next</span></h2>
+<p>Recommendations are sequenced by risk and dependency. The primary site addresses customer proximity; the alternative addresses cost optimisation.</p>
+<table>
+<thead><tr><th style="width:8%;">No.</th><th style="width:42%;">Recommendation</th><th style="width:18%;">Priority</th><th>Owner</th></tr></thead>
+<tbody>
+<tr><td class="mono">01</td><td>Establish primary warehouse in Saxony/Dresden (DE80) for JIT proximity to all four major fabs</td><td><strong>High</strong></td><td>Client team</td></tr>
+<tr><td class="mono">02</td><td>Evaluate Wrocław (PL51) for finishing operations — 40–50% lower rents, rail-linked to Dresden</td><td><strong>High</strong></td><td>Client team + DarojaAI</td></tr>
+<tr><td class="mono">03</td><td>Engage early with grid operators in both locations — power grid congestion is the #1 constraint</td><td><strong>High</strong></td><td>Client team</td></tr>
+<tr><td class="mono">04</td><td>Conduct detailed dual-site logistics cost modelling (rent, transport, labour arbitrage)</td><td><strong>Medium</strong></td><td>DarojaAI</td></tr>
+<tr><td class="mono">05</td><td>Establish recruitment partnerships with TU Dresden and Wrocław University of Technology</td><td><strong>Medium</strong></td><td>Client team</td></tr>
+</tbody>
+</table>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>06 — ROADMAP</div>
+<div class="bar" style="background:#B34A35;"></div>
+<h2>Sequencing</h2>
+<table>
+<thead><tr><th style="width:14%;">Phase</th><th style="width:16%;">Duration</th><th style="width:40%;">Deliverable</th><th>Milestone</th></tr></thead>
+<tbody>
+<tr><td class="mono">Phase 1</td><td class="mono">4–6 wks</td><td>Site selection shortlist with financial modelling</td><td>Dresden vs. Wrocław comparative analysis</td></tr>
+<tr><td class="mono">Phase 2</td><td class="mono">8–12 wks</td><td>Detailed facility design and grid connectivity assessment</td><td>Grid operator engagement; planning pre-consultation</td></tr>
+<tr><td class="mono">Phase 3</td><td class="mono">12–16 wks</td><td>Lease negotiation and permitting initiation</td><td>Heads of terms; dual-site strategy decision</td></tr>
+<tr><td class="mono">Phase 4</td><td class="mono">Ongoing</td><td>Fit-out and operational readiness</td><td>Facility operational; supplier onboarding</td></tr>
+</tbody>
+</table>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>APPENDIX — DATA SOURCES &amp; CONFIDENCE</div>
+<div class="bar" style="background:#E6B340;"></div>
+<h2>Data sources &amp; confidence tiers</h2>
+<h3>Live API Data (queried 2026-08-05)</h3>
+<table>
+<thead><tr><th>Dataset</th><th>Records</th><th>Key Output</th></tr></thead>
+<tbody>
+<tr><td>ECB RESC (Commercial Property Prices)</td><td class="mono">312 rows</td><td>EU27 aggregate index: 114.1 (Q4 2025)</td></tr>
+<tr><td>Eurostat nama_10r_2gdp (GDP by NUTS-2)</td><td class="mono">75,931 rows</td><td>GDP per capita for DE80, PL51, CZ04, ITC4, etc.</td></tr>
+</tbody>
+</table>
+<h3>Confidence Summary</h3>
+<table>
+<thead><tr><th>Claim</th><th>Tier</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>ESMC/TSMC: €10B+ investment</td><td class="mono">Confirmed</td><td>Dragon-tram ceremony Jun 2026<sup class="fn">[3]</sup></td></tr>
+<tr><td>Infineon Smart Power Fab: €5B</td><td class="mono">Confirmed</td><td>Infineon press release<sup class="fn">[3]</sup></td></tr>
+<tr><td>Dresden total: ~€17.1B+</td><td class="mono">Confirmed</td><td>Sum of confirmed projects</td></tr>
+<tr><td>EU27 property index: 114.1</td><td class="mono">Confirmed</td><td>ECB RESC live query<sup class="fn">[ECB]</sup></td></tr>
+<tr><td>German prime logistics rent: €60–120/sqm</td><td class="mono">Confirmed</td><td>IndiFind / Savills<sup class="fn">[IF][Sav]</sup></td></tr>
+<tr><td>Wrocław prime rent: €30–60/sqm</td><td class="mono">Derived</td><td>Poland range from IndiFind<sup class="fn">[IF]</sup></td></tr>
+<tr><td>Supplier multiplier: 3–5×</td><td class="mono">Derived</td><td>Industry-standard estimate</td></tr>
+<tr><td>Saxony ecosystem: €30–40B by 2032</td><td class="mono">Derived</td><td>Committed fabs + multiplier</td></tr>
+<tr><td>EU defense semiconductor demand</td><td class="mono">Unconfirmed</td><td>Defense spending confirmed<sup class="fn">[9]</sup>; semi-specific not quantified</td></tr>
+<tr><td>AI/data center European demand</td><td class="mono">Unconfirmed</td><td>Primarily US/Asia</td></tr>
+</tbody>
+</table>
+
+<div class="page-break"></div>
+<div class="eyebrow"><span class="dot"></span>REFERENCES</div>
+<div class="bar" style="background:#E6B340;"></div>
+<h2>Footnotes &amp; sources</h2>
+<div class="footnotes">
+<p class="fn"><span class="fn-num">[1]</span> European Commission, "EU Chips Act 2.2," COM(2026) 412, June 2026. ec.europa.eu/commission/presscorner/en/ip_26_412</p>
+<p class="fn"><span class="fn-num">[2]</span> European Commission, "State Aid: €8.1B Under IPCEI Microelectronics," IP/23/3087, June 2023. ec.europa.eu/commission/presscorner/detail/en/ip_23_3087</p>
+<p class="fn"><span class="fn-num">[3]</span> Silicon Saxony / ESMC / Infineon / GlobalFoundries — Dresden cluster data. Multiple sources: ESMC dragon-tram ceremony (Jun 2026); Infineon press release (Jul 2, 2026); GlobalFoundries via silicon-saxony.de (Mar 2026); TrendForce (Nov 2025); oiger.de (Feb 2026); Construction Review Online.</p>
+<p class="fn"><span class="fn-num">[5]</span> European Commission, onsemi state aid approval, IP/25/2757, November 2025. ec.europa.eu/commission/presscorner/detail/en/ip_25_2757</p>
+<p class="fn"><span class="fn-num">[9]</span> European Defence Agency, "Defence Data 2025-2026," July 2026. eda.europa.eu/publications-and-data/thematic-policy-reports/eda-defence-data-2025-2026</p>
+<p class="fn"><span class="fn-num">[11]</span> European Commission, "EDIP: €1.5B Work Programme," March 2026. defence-industry-space.ec.europa.eu/edip-commission-adopts-eu15-billion-work-programme-boost-european-and-ukrainian-defence-industry-2026-03-30_en</p>
+<p class="fn"><span class="fn-num">[14]</span> Mercedes-Benz eSprinter Jawor investment, €360M. tvpworld.com/88972070/mercedes-benzs-e-sprinter-production-in-berlin-to-poland-move</p>
+<p class="fn"><span class="fn-num">[18]</span> Eurostat NAMA_10R_2GDP — GDP by NUTS-2 region. ec.europa.eu/eurostat/databrowser/view/nama_10_gdp</p>
+<p class="fn"><span class="fn-num">[19]</span> Eurostat NAMA_10R_2GFCF — Gross Fixed Capital Formation by NUTS-2. ec.europa.eu/eurostat/databrowser/view/nama_10_gdp</p>
+<p class="fn"><span class="fn-num">[20]</span> EC IPCEI Approved Projects Register. competition-policy.ec.europa.eu/state-aid/ipcei/approved-ipceis_en</p>
+<p class="fn"><span class="fn-num">[21]</span> EIB Open Data — Financed Projects. eib.org/en/publications-research/eib-open-data</p>
+<p class="fn"><span class="fn-num">[ES]</span> Eurostat SDMX REST API — live query 2026-08-05. GDP per capita by NUTS-2 (nama_10r_2gdp).</p>
+<p class="fn"><span class="fn-num">[ECB]</span> ECB RESC (Real Estate Statistics — Commercial Property) — live query 2026-08-05. data.ecb.europa.eu/data/datasets/RESC</p>
+<p class="fn"><span class="fn-num">[BNP]</span> BNP Paribas "Review — Logistics Markets in Europe Q1 2026." realestate.bnpparibas.com</p>
+<p class="fn"><span class="fn-num">[Sav]</span> Savills, "The Experts View: European Industrial and Logistics Real Estate Market — 2026." savills.com/research_articles/255800/386469-0</p>
+<p class="fn"><span class="fn-num">[IF]</span> IndiFind, "Understanding European Industrial Property Markets." indifind.com/for-finders/knowledge-base/european-industrial-markets</p>
+<p class="fn"><span class="fn-num">[Erena]</span> Erena / CBRE / Knight Frank, "Europe Logistics Property Market and Development of Logistics Space 2026 Analysis." erena.me/2026/02/24/europe-logistics-property-market-and-development-of-logistics-space-2026-analysis/</p>
+</div>
+
+<hr class="rule" style="margin-top:30px; margin-bottom:12px;">
+<p class="mono small">DarojaAI · European Manufacturing Assessment Framework · August 2026</p>
+
+</body>
+</html>
