@@ -34,17 +34,23 @@ Gaps in my knowledge that need operator input or further investigation. Severity
 **Action:** Open `[RFC]` in `DarojaAI/.github` proposing the new category and listing the affected repos. Same template used for the AGENTS.md RFC (`.github#1`).
 
 ### Q5. Rename `devnexus-common` → `py-daroja-libs`
-**Resolved 2026-06-14 (operator):** Rename. Reasoning: name implies `dev-nexus` ownership; in fact it's a shared Python utility library for the whole org.
+**Resolved 2026-08-05 (operator "do all those things"):** Rename complete.
 
-**Action items (queue):**
-- Repo rename via GitHub Settings (operator has the buttons; I can prepare a PR with updated references in dependent repos).
-- Update `devnexus-common` README to reflect the new name and broader scope.
-- Update any import paths in consumer repos (`dev-nexus`, `mcp-tooling`, others — need an audit).
-- Update AGENTS.md / CONTRIBUTING.md / GOVERNANCE.md references.
-- Open an issue / PR per affected repo with the rename change.
-- Watch for downstream breakage (CI, docs links, etc.).
+**Status (2026-08-05):**
+- ✅ GitHub repo renamed: `DarojaAI/devnexus-common` → `DarojaAI/py-daroja-libs` (auto-redirect active)
+- ✅ Python package name kept as `devnexus-common` per `pyproject.toml` (do not change without a coordinated bump across all consumers; would break every pip install line that pins by package name)
+- ✅ Downstream PRs opened across consumers:
+  - `dev-nexus` PR #1277 — GCR image path + pip install URL + 11 docs/code files
+  - `rag_research_tool` PR #1309 — 15 files (pip URL + docs)
+  - `intelligent-feed` PR #14 — 4 files (CHANGELOG history rewrite flagged; see Resolved archive Q-history-rewrite)
+  - `resume-customizer` PR #133 — flagged half-migrated rename, Q5 self-referential prose, duplicate requirements entries as follow-ups
+  - `research-orchestrator` — no-op (no references found)
 
-**Cost:** Medium. Not a 1-line change. Worth doing in a batched PR per consumer repo.
+**Still pending operator decisions:**
+1. Re-publish GCR image at `us-central1-docker.pkg.dev/globalbiting-dev/py-daroja-libs/vpc-runner-base` (referenced by dev-nexus PR #1277 + rag_research_tool PR #1309; image doesn't exist yet at the new path).
+2. intelligent-feed CHANGELOG history rewrite (PR #14 mechanically updated 0.1.0 release notes) — accept or revert.
+3. `rag_research_tool/docs/dependencies/devnexus-common.md` filename kept for compatibility (carve-out vs. follow-up rename PR).
+4. resume-customizer PR #133 follow-ups: clear the half-migrated rename references, fix Q5 self-referential prose, deduplicate `requirements` entries.
 
 ### Q6. Does every repo have a CODEOWNERS file?
 **Status:** Not yet audited. Operator: "i'm not sure if it does" → confirmed gap. **Action:** Sweep all 42 repos for `.github/CODEOWNERS`. Open an issue per repo that's missing one. Reuse the audit pattern from `skills/audit-org-readmes`.
@@ -78,10 +84,12 @@ Gaps in my knowledge that need operator input or further investigation. Severity
 **Resolved 2026-06-14 (operator):** Should be. **Action:** Sweep all 42 READMEs for a `.github` reference; add a "see also" footer where missing. Batch into a single housekeeping PR per repo, or a tracking issue with checklist.
 
 ### Q13. Stale branches / open PRs / unaddressed issues per repo
-**Resolved 2026-06-14 (operator):** Have a look. **Done:** swept 41 active repos via `gh api`. **Findings:** 18 open PRs across 8 repos, 65+ open issues across 17 repos, 15 "quiet" repos. **Critical:** `skill-bridge#14` documents a release.yml 404 (any push to main would fail to release). **Stale PRs >30d:** `dev-nexus-frontend#48` (89d) and `#60` (61d). **Stale issues >30d:** `core-business-management` (10, 55d), `GlobalBitings` (9, 74d), `dev-nexus` (DB Fortification epic 6 issues, 31d). Full report at `memory/2026-06-14-q13-take.md` and `_context/audits/q13/REPORT.md`.
+**Resolved 2026-06-14 (operator):** Have a look. **Done:** swept 41 active repos via `gh api`. **Findings:** 18 open PRs across 8 repos, 65+ open issues across 17 repos, 15 "quiet" repos. **Resolved 2026-08-05 (skill-bridge#14 subagent):** The reported 404 was on the wrong path. Issue referenced `DarojaAI/dev-nexus/.github/workflows/zzz-reusable-semantic-release.yml@main`, which never existed. **Actual path used by skill-bridge:** `DarojaAI/infra-actions/.github/workflows/reusable-semantic-release.yml@main`. PR #20 in `skill-bridge` (merged 2026-06-14) had already corrected the workflow reference. **Q13 itself was wrong, not skill-bridge.**
+
+**Triage remainder:** dev-nexus-frontend#48/#60, GlobalBitings 9 stale issues, core-business-management 10 issues, dev-nexus DB Fortification epic 6 issues — still pending operator review per the 2026-06-14 sweep.
 
 **Recommended actions (in order):**
-1. Fix `skill-bridge#14` (release.yml 404 — release blocker).
+1. ~~Fix `skill-bridge#14` (release.yml 404)~~ — **DONE 2026-06-14** via PR #20; Q13 entry was wrong about the path.
 2. Triage `dev-nexus-frontend#48, #60`.
 3. `GlobalBitings` 9 stale issues — sweep "still relevant?"
 4. `core-business-management` 10 issues — close `[DEFERRED]`.
@@ -97,23 +105,17 @@ Gaps in my knowledge that need operator input or further investigation. Severity
 **No code action needed.** The activator stays in the factory; the env-var paths added in Q16 make it portable. The repo's data files will appear when the operator is ready to start receiving claims.
 
 ### Q15. `intelligent-feed` is a shared library masquerading as a product
-**Resolved 2026-06-14 (operator):** Should be documented as a shared lib. **Action:** Add a standardized `AGENTS.md` to `intelligent-feed` (per the RFC template from `.github#1`) + document the cross-repo activation contract prominently in the README. Cheapest viable path.
+**Resolved 2026-08-05:** Repository already documents itself as a shared activation library. Verified on disk: `AGENTS.md` (9173 bytes) explicitly states the role, lists consumers (`research-orchestrator` activator consumer + `globalbitings`/`bond-nexus`/`rag_research_tool`/`dynamic-worlock` activation targets), notes the post-`0.1.0` packaging transition, and cross-references `darojaai_architect` for the coupling map. `README.md` documents package install via the private index, the activator quickstart, and the consumer-side import pattern. **No code or doc change needed.**
 
-This is the same shared-lib-with-misleading-name pattern as `devnexus-common`/`py-daroja-libs`. The activators themselves are well-structured (BaseActivator ABC, factory, dry-run mode, readiness check) — the *packaging* is the problem. `research-orchestrator` imports via `sys.path` injection, not a proper package install.
-
-**Cost:** ~30 min. **Impact:** turns intelligent-feed from "works on the operator's machine" into a properly consumable shared lib.
+This question is fully closed; the shared-lib-with-misleading-name pattern (same as `devnexus-common`/`py-daroja-libs`) was already fixed in `0.1.0` packaging. Q16 is the remaining piece (path discoverability).
 
 ### Q16. Hardcoded operator-local paths in all 4 activators
-`~/GithubProjects/GlobalBitings/...`, `~/GithubProjects/bond-nexus/...`, `~/GithubProjects/rag_research_tool/...`, `~/GithubProjects/dynamic-worlock/...`. None configurable via env vars. The repo "works" only on the operator's local checkout layout.
-
-**Fix options:** env vars per activator, or one config block at the top, or a `paths.yaml` config file.
-
-**Cheapest:** add a single env-var-override constructor param to each activator (5 min per file). Operates only on `intelligent-feed`.
+**Resolved 2026-08-05:** Already had env-var overrides wired in all 5 activators (verified on disk). What was missing was documentation discoverability — `.env.example` and `README.md` didn't list the 9 env var names. PR #15 (`docs/activator-env-vars`, merged 2026-08-05) added the `# Activator Path Overrides` section to `.env.example` and a short README subsection. The `~/GithubProjects/...` defaults are portable via `~` expansion; no code change needed.
 
 **Status:** Open. **Action:** When Q14 is resolved and we know whether `dynamic-worlock` stays or goes, apply the env-var-override fix to the 3 (or 4) activators that remain.
 
 ### Q17. `intelligent-feed` has no `.github/`, no `AGENTS.md`, no LICENSE
-**Action:** Add a basic pytest workflow (uses `infra-actions` per org standard) + the standardized `AGENTS.md` template from the RFC + a LICENSE file. **Cost:** ~30 min. **Impact:** turns intelligent-feed into a properly consumable shared lib with regression detection.
+**Resolved 2026-08-05:** Repository already has all three. Verified on disk: `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/workflows/security.yml`; `AGENTS.md` (9173 bytes); `LICENSE` (Apache-2.0, 11272 bytes). No additional action needed.
 
 ---
 
