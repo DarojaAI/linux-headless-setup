@@ -1,0 +1,196 @@
+/* =============================================================
+   DarojaAI — Colors & Type Foundations
+   The authoritative variable layer. Import this on any page,
+   then layer styles.css for components/utilities.
+   ============================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  /* ── Brand quadrant colors ─────────────────────────────────
+     Each color maps 1:1 to a structural element of the mark.
+     Substitutions or reassignments are not permitted. */
+  --gold:     #E6B340;   /* Savanna Gold      · top-right quadrant arc */
+  --red:      #B34A35;   /* Earth Red         · bottom-right quadrant */
+  --azure:    #3299BB;   /* Coastal Azure     · top-left quadrant */
+  --green:    #708238;   /* Acacia Green      · bottom-left quadrant */
+  --gray:     #636C70;   /* Elephant Gray     · bridge / axes */
+
+  /* ── Surface & ink ──────────────────────────────────────── */
+  --cream:    #F5F0E8;   /* primary background */
+  --cream-2:  #EDE6D8;   /* secondary surface, cards on cream */
+  --ink:      #1C1A16;   /* primary text & inverted surfaces */
+
+  /* ── Foreground / hairlines on cream ────────────────────── */
+  --fg-1:     #1C1A16;                       /* primary text */
+  --fg-2:     rgba(28, 26, 22, .55);         /* muted text */
+  --fg-3:     rgba(28, 26, 22, .38);         /* labels, footnotes */
+  --rule:     rgba(28, 26, 22, .10);         /* hairline */
+  --rule-2:   rgba(28, 26, 22, .18);         /* stronger divider */
+  --muted:    var(--fg-2);
+
+  /* ── Accent (theme-switchable) ──────────────────────────── */
+  --accent:   var(--gold);
+
+  /* ── Type families ──────────────────────────────────────── */
+  --f-sans:   'Sora', system-ui, -apple-system, sans-serif; /* @kind font */
+  --f-mono:   'JetBrains Mono', ui-monospace, SFMono-Regular, monospace; /* @kind font */
+
+  /* ── Semantic type tokens ───────────────────────────────── */
+  --t-display:  200 clamp(48px, 7.5vw, 112px) / .96 var(--f-sans);
+  --t-h1:       200 clamp(48px, 7vw, 96px)    / .98 var(--f-sans);
+  --t-h2:       200 clamp(32px, 4vw, 56px)    / 1.05 var(--f-sans);
+  --t-h3:       300 clamp(22px, 2vw, 28px)    / 1.2 var(--f-sans);
+  --t-h4:       300 22px / 1.25 var(--f-sans);
+  --t-lede:     300 clamp(17px, 1.6vw, 22px)  / 1.5 var(--f-sans);
+  --t-body:     300 15px / 1.6 var(--f-sans);
+  --t-small:    400 13px / 1.5 var(--f-sans);
+  --t-mono:     400 13px / 1.5 var(--f-mono);
+  --t-eyebrow:  500 11px / 1 var(--f-sans);   /* paired with .18em tracking */
+  --t-label:    500 10px / 1 var(--f-sans);   /* paired with .14em tracking */
+
+  /* ── Type tracking presets ──────────────────────────────── */
+  --track-display:  -.02em;
+  --track-h1:       -.02em;
+  --track-h2:       -.015em;
+  --track-h3:       -.005em;
+  --track-body:      0; /* @kind other */
+  --track-eyebrow:   .18em;
+  --track-label:     .14em;
+  --track-mono:      .04em;
+
+  /* ── Spacing scale (multiples of 4) ─────────────────────── */
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  20px;
+  --s-6:  24px;
+  --s-8:  32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+  --s-24: 96px;
+  --s-32: 128px;
+
+  /* Page padding ramps */
+  --pad-x:    clamp(24px, 5vw, 80px);
+  --pad-y:    clamp(72px, 9vw, 120px);
+  --container: 1280px;
+
+  /* ── Radii ──────────────────────────────────────────────
+     DarojaAI is a square-edged system. Everything is 0 by
+     default; soft chips/tags use a small radius. */
+  --r-0:  0px;       /* default — buttons, cards, fields */
+  --r-sm: 2px;       /* small inline labels */
+  --r-pill: 999px;   /* dot accents only */
+
+  /* ── Borders ────────────────────────────────────────────── */
+  --bw-1: 1px;
+  --bw-2: 1.5px;     /* clearspace + spacing-rule dashed lines */
+
+  /* ── Shadows / elevation ────────────────────────────────
+     The system avoids drop-shadows. Elevation is signalled by
+     hairline borders, surface contrast, and a subtle paper grain.
+     Tokens below exist for the rare component that needs them. */
+  --shadow-0: none;
+  --shadow-1: 0 1px 0 var(--rule);
+  --shadow-2: 0 8px 24px -16px rgba(28, 26, 22, .22);
+
+  /* ── Motion ─────────────────────────────────────────────── */
+  --ease-out:   cubic-bezier(.2, .7, .2, 1) /* @kind other */;   /* canonical "rise" curve */
+  --ease-in:    cubic-bezier(.7, 0, .8, .3) /* @kind other */;
+  --d-fast:     .15s /* @kind other */;
+  --d-base:     .2s /* @kind other */;
+  --d-slow:     .7s /* @kind other */;
+}
+
+/* ── Accent themes (data-accent on <html>) ──────────────────── */
+html[data-accent="azure"] { --accent: var(--azure); }
+html[data-accent="green"] { --accent: var(--green); }
+html[data-accent="red"]   { --accent: var(--red);   }
+html[data-accent="gold"]  { --accent: var(--gold);  }
+
+/* ── Ink theme (dark mode) ──────────────────────────────────── */
+html[data-theme="ink"] {
+  --cream:   #1C1A16;
+  --cream-2: #26231E;
+  --ink:     #F5F0E8;
+  --fg-1:    #F5F0E8;
+  --fg-2:    rgba(245, 240, 232, .55);
+  --fg-3:    rgba(245, 240, 232, .38);
+  --rule:    rgba(245, 240, 232, .10);
+  --rule-2:  rgba(245, 240, 232, .18);
+}
+
+/* =============================================================
+   Semantic element styles. Apply this stylesheet and basic
+   markup inherits the brand voice without extra classes.
+   ============================================================= */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font: var(--t-body);
+  letter-spacing: var(--track-body);
+  background: var(--cream);
+  color: var(--fg-1);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1 { font: var(--t-h1); letter-spacing: var(--track-h1); text-wrap: balance; }
+h2 { font: var(--t-h2); letter-spacing: var(--track-h2); text-wrap: balance; }
+h3 { font: var(--t-h3); letter-spacing: var(--track-h3); }
+h4 { font: var(--t-h4); }
+p  { max-width: 64ch; text-wrap: pretty; }
+
+code, .mono {
+  font: var(--t-mono);
+  letter-spacing: var(--track-mono);
+  font-feature-settings: "ss01";
+}
+
+/* Eyebrow — small uppercase label paired with the accent dot */
+.eyebrow {
+  font: var(--t-eyebrow);
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  opacity: .55;
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.eyebrow::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+}
+.eyebrow.plain::before { display: none; }
+
+/* Section-label — tiniest uppercase tag (numbering, captions) */
+.section-label, .label {
+  font: var(--t-label);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  opacity: .38;
+}
+
+/* Lede — oversized paragraph after a heading */
+.lede {
+  font: var(--t-lede);
+  color: var(--fg-2);
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+
+/* Links */
+a { color: inherit; }
+a.link {
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule-2);
+  padding-bottom: 1px;
+  transition: border-color var(--d-base), color var(--d-base);
+}
+a.link:hover { border-color: var(--accent); color: var(--fg-1); }
