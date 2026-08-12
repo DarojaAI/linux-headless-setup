@@ -35,28 +35,16 @@ info "Starting Docker installation (for OpenClaw agent sandbox)..."
 apt_install docker.io
 
 # ── 2. Daemon config ────────────────────────────────────────────────────────────────────────
-# These are the defaults we'd want anyway; writing them explicitly
-# means a future apt upgrade that touches /etc/docker/daemon.json
-# doesn't silently change behavior.
+# IMPORTANT: The directives below must match what the host's installed
+# dockerd accepts. As of Docker 29.x (2026-08), `ipv6-forwarding` is
+# NOT a valid daemon.json directive — Docker rejects it outright.
+# IPv6 forwarding is a kernel-level setting handled by sysctl; see
+# the 99-docker-forward.conf dropin below. Valid daemon.json keys
+# include: log-driver, storage-driver, live-restore, userland-proxy,
+# iptables, ip-forward, dns, bip, fixed-cidr.
 #
-# - userland-proxy: false      — iptables-based port forwarding only; smaller surface
-# - log-driver: journald       — log to systemd journal; integrates with monitoring.sh
-# - live-restore: true         — keep containers running across daemon restarts
-# - storage-driver: overlay2    — Ubuntu 24.04 default; explicit so an apt
-#                                 change can't swap it for vfs (which would
-#                                 silently 10x disk usage)
-# - iptables: true             — required for bridge networking on most distros
-# - ip-forward: true           — required so dockerd's bridge network can
-#                                 forward packets between host and containers.
-#                                 Without this, every 'docker run' prints
-#                                 'WARNING: IPv4 forwarding is disabled.
-#                                 Networking will not work.'
-# - ipv6-forwarding: true      — same as above for IPv6
-# - dns: ["8.8.8.8","1.1.1.1"] — dockerd defaults to inheriting host DNS
-#                                 (185.12.64.1/2 on Hetzner). Those don't
-#                                 respond from inside the container network
-#                                 namespace, breaking apt-get in builds.
-#                                 Use external upstreams explicitly.
+# AGENTS.md: 'verify the artifact on the VM, not just the deploy
+# job status'. The JSON validation below enforces that.
 #
 # Merge semantics: on first install we write the full template; on re-runs
 # we JSON-merge the above into whatever's already on disk so operator
@@ -71,7 +59,6 @@ DAEMON_DEFAULTS='{
   "userland-proxy": false,
   "iptables": true,
   "ip-forward": true,
-  "ipv6-forwarding": true,
   "dns": ["8.8.8.8", "1.1.1.1"]
 }'
 
@@ -103,6 +90,26 @@ print(json.dumps(base, indent=2))
 	mv "$DAEMON_JSON.tmp" "$DAEMON_JSON"
 	info "Merged daemon.json:"
 	cat "$DAEMON_JSON"
+fi
+
+# ── 2a. Validate daemon.json + restart dockerd ──────────────────────────────────
+# Validate that what we wrote is parseable JSON; fail loud if not.
+# Then restart dockerd so it picks up the new config. On fresh installs
+# where dockerd hasn't started yet, the restart is a harmless no-op.
+info "Validating $DAEMON_JSON"
+if ! python3 -m json.tool "$DAEMON_JSON" >/dev/null; then
+	error "$DAEMON_JSON is not valid JSON after write — aborting"
+	exit 1
+fi
+
+info "Restarting dockerd to apply daemon.json changes"
+systemctl restart docker || true
+sleep 3
+if systemctl is-active docker >/dev/null 2>&1; then
+	info "dockerd is active after restart"
+else
+	error "dockerd failed to come back after restart"
+	exit 1
 fi
 
 # Persist ip_forward at the kernel level so dockerd doesn't have to set
