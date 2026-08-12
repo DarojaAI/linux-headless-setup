@@ -41,6 +41,13 @@ bash "$SCRIPT_DIR/scripts/system.sh"
 bash "$SCRIPT_DIR/scripts/security.sh"
 bash "$SCRIPT_DIR/scripts/runtimes.sh"
 bash "$SCRIPT_DIR/scripts/user.sh"
+# install-docker.sh installs Docker + writes /etc/docker/daemon.json +
+# enables ip_forward via sysctl drop-in. Required for the OpenClaw agent
+# sandbox (agents.defaults.sandbox.backend = "docker" in
+# linux-desktop-seed). Must run AFTER user.sh (so APP_USER exists) and
+# BEFORE monitoring.sh (so the docker daemon is up before node_exporter
+# and friends probe it).
+bash "$SCRIPT_DIR/scripts/install-docker.sh"
 bash "$SCRIPT_DIR/scripts/monitoring.sh"
 bash "$SCRIPT_DIR/scripts/openclaw-prep.sh"
 
