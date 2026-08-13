@@ -79,3 +79,38 @@ setup() {
     return 1
   }
 }
+
+# ── Test-contract regression tests (post-#15 followups) ────────
+#
+# After the pre-increment fix unblocked the script (PR #15), the
+# integration test ran all 13 assertions and 2 reported real
+# VM-state failures that were TEST-side bugs:
+#   1. node installed (v22) — VM ships v24 LTS; v22 pin was stale.
+#   2. sshd running — Ubuntu 24+ renamed the unit to ssh.service;
+#      sshd.service doesn't exist on current hosts.
+#
+# The contract is "node present + LTS-class" and "ssh service
+# active (either name)". These regression tests pin those
+# contracts so a future PR can't silently regress back to
+# hardcoded v22 / sshd.service.
+
+@test "node assertion is LTS-class (>=v20), NOT hardcoded v22" {
+  ! grep -qE 'node -v . grep -q "\^v22"' "$SCRIPT"
+}
+
+@test "ssh assertion accepts ssh.service OR sshd.service" {
+  # Ubuntu 24+ uses ssh.service; older hosts used sshd.service.
+  # Test the OR fallback via substrings rather than a full-line
+  # regex (the original regex tried to match a single-quoted shell
+  # body, which is brittle to escape in a bats test).
+  grep -qF 'systemctl is-active ssh >/dev/null 2>&1' "$SCRIPT" || {
+    echo "missing ssh.service check"; return 1
+  }
+  grep -qF 'systemctl is-active sshd >/dev/null 2>&1' "$SCRIPT" || {
+    echo "missing sshd.service fallback check"; return 1
+  }
+}
+
+@test "node assertion grep regex accepts v20-v99" {
+  grep -qE 'grep -qE .\^v\(2\[0-9\].' "$SCRIPT"
+}
