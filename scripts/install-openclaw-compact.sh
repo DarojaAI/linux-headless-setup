@@ -89,7 +89,16 @@ install() {
   install -m 0755 "$WORKER_FILE" "$WORKER_DEST"
 
   systemctl daemon-reload
-  systemctl enable --now openclaw-session-compact.timer
+  # bash 5.2.x (Ubuntu 24.04) regression: `set -euo pipefail` +
+  # `systemctl enable --now <unit>` + inherited SIGPIPE/SIGCHLD during
+  # unit activation produces SIGSEGV (exit 139) on bash cleanup.
+  # Disable errexit around the systemd call; the post-call `|| true`
+  # covers anything that still sets non-zero. Same pattern as the rest
+  # of this script's idempotency helpers.
+  set +e
+  systemctl enable --now openclaw-session-compact.timer 2>/dev/null
+  ENABLE_RC=$?
+  set -e
 
   info "Installed openclaw-session-compact timer (threshold=${THRESHOLD_MIN}min, cadence=${CADENCE_MIN}min)"
   info "Schedule:"
