@@ -71,23 +71,22 @@ install() {
     exit 1
   fi
 
-  # Read the threshold into the service unit by envsubst (preserve bash
-  # variables that aren't ours — only THRESHOLD_MIN gets expanded).
-  # Export THRESHOLD_MIN + CADENCE_MIN BEFORE `env -i`, because env -i
-  # clears the environment; the inner subshell needs them as exported
-  # names. SC2097/SC2098.
-  export THRESHOLD_MIN="$THRESHOLD_MIN" CADENCE_MIN="$CADENCE_MIN"
-  env -i PATH="/usr/bin:/bin" \
-      bash -c '
-        set -euo pipefail
-        THRESHOLD_MIN='"$THRESHOLD_MIN"'
-        CADENCE_MIN='"$CADENCE_MIN"'
-        sed "s/__THRESHOLD_MIN__/${THRESHOLD_MIN}/g; s/__CADENCE_MIN__/${CADENCE_MIN}/g" \
-          '"$SERVICE_FILE"' >  "$SERVICE_DEST"
-        cp '"$TIMER_FILE"' "$TIMER_DEST"
-        chmod 0644 "$SERVICE_DEST" "$TIMER_DEST"
-        install -m 0755 '"$WORKER_FILE"' "'"$WORKER_DEST"'"
-      '
+  # Substitute the placeholders directly. The prior implementation ran
+  # this inside `env -i bash -c '...'` for isolation, but that block
+  # lost the outer-script variables (SERVICE_DEST, TIMER_DEST,
+  # WORKER_DEST) under `set -euo pipefail` because they're local-scope,
+  # not exported. Deploy 31815364007 (post-#17) failed at line 52 of
+  # deploy-headless.sh with `bash: line 5: SERVICE_DEST: unbound
+  # variable`. The substitution is a pure transformation; the outer
+  # `set -euo pipefail` is sufficient isolation.
+  THRESHOLD_MIN="${THRESHOLD_MIN:-120}"
+  CADENCE_MIN="${CADENCE_MIN:-30}"
+  sed -e "s/__THRESHOLD_MIN__/${THRESHOLD_MIN}/g" \
+      -e "s/__CADENCE_MIN__/${CADENCE_MIN}/g" \
+      "$SERVICE_FILE" > "$SERVICE_DEST"
+  cp "$TIMER_FILE" "$TIMER_DEST"
+  chmod 0644 "$SERVICE_DEST" "$TIMER_DEST"
+  install -m 0755 "$WORKER_FILE" "$WORKER_DEST"
 
   systemctl daemon-reload
   systemctl enable --now openclaw-session-compact.timer
