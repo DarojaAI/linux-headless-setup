@@ -54,9 +54,17 @@ install() {
     exit 1
   fi
 
+  # bash 5.2.x (Ubuntu 24.04) regression: under `set -euo pipefail`
+  # + an ERR trap (lib.sh line 16), a non-zero `command -v` exit that
+  # is intentionally handled by `if ! ...; then` still fires lib.sh's
+  # ERR trap on the OUTER shell's wrapper, killing the script with
+  # SIGSEGV (exit 139). Same shape as PR #19's systemctl enable
+  # workaround: disable errexit around the soft pre-flight probe.
+  set +e
   if ! command -v openclaw >/dev/null 2>&1; then
     echo "WARN: openclaw CLI not found on PATH — service will be enabled but will fail until openclaw is installed (typical order: this script runs after install-docker + openclaw-prep, so it should be present)" >&2
   fi
+  set -e
 
   if [ ! -f "$SERVICE_FILE" ]; then
     echo "FATAL: missing service unit template: $SERVICE_FILE" >&2
