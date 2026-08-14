@@ -49,6 +49,7 @@ bash "$SCRIPT_DIR/scripts/user.sh"
 # and friends probe it).
 bash "$SCRIPT_DIR/scripts/install-docker.sh"
 bash "$SCRIPT_DIR/scripts/monitoring.sh"
+bash "$SCRIPT_DIR/scripts/install-openclaw-compact.sh"
 bash "$SCRIPT_DIR/scripts/openclaw-prep.sh"
 
 info "=== deploy-headless.sh complete ==="

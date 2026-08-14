@@ -1,0 +1,35 @@
+# openclaw-session-compact.timer — runs compact-openclaw-sessions.sh every
+# 30 minutes. Cadence source-of-truth is this unit; opt 1 per the
+# 2026-08-14 design discussion.
+#
+# Decoupled from session.idleMinutes (which rotates sessions when idle),
+# and from the gateway's four event-driven compaction triggers (which
+# only fire under active model traffic). Idle headless agents get a
+# compaction poke every 30 min regardless of activity.
+#
+# Persistent=true so missed cycles run on boot (e.g., VM was off for a
+# hour → catch up on next boot, don't lose the compaction).
+#
+# Why OnCalendar=*:0/30 (not *:0,30 — both are valid but :0/30 is the
+# canonical systemd idiom for "every 30 min starting from minute 0"):
+#   - *:0/30  → at minute 0, 30, 60, 90, ... of every hour
+#   - OnBootSec=5min → first cycle ~5 min after enable (covers the
+#     "enable and immediately verify" workflow without waiting a full
+#     30 min)
+#
+# Why not RandomizedDelaySec: avoids colliding with other pumers on
+# the same host at the same minute boundary.
+
+[Unit]
+Description=OpenClaw per-session compaction pumper (every 30 min)
+Documentation=https://github.com/DarojaAI/linux-headless-setup
+
+[Timer]
+OnCalendar=*:0/30
+OnBootSec=5min
+Persistent=true
+AccuracySec=1min
+Unit=openclaw-session-compact.service
+
+[Install]
+WantedBy=timers.target

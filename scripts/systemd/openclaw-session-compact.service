@@ -1,0 +1,43 @@
+# openclaw-session-compact.service — compacts idle openclaw sessions on a
+# 30-min cadence (configurable via CADENCE_MIN envsubst).
+#
+# Decouples compaction cadence from session-lifetime tuning — opt 1 per the
+# 2026-08-14 design discussion. Idempotent re-deploys: timer re-enabled,
+# daemon reloaded, log dir created. Fails-soft per-session (one stuck session
+# does not break the cycle).
+#
+# System-enforced contract:
+#   - RunAs=root is required (openclaw sessions compact <id> needs the
+#     agent's own SQLite store, which is per-uid — root can read desktopuser's
+#     store via sudo; this script does the same).
+#   - Logs land in journald (tag: openclaw-session-compact) AND
+#     /var/log/openclaw-compact/last-cycle.log (best-effort local file).
+#
+#   Threshold source-of-truth:  __THRESHOLD_MIN__ placeholder, replaced at
+#   install time via envsubst (see install-openclaw-compact.sh). Default
+#   120 min = 2 hours; matches session.idleMinutes convention but does NOT
+#   rotate sessions.
+
+[Unit]
+Description=OpenClaw per-session compaction pumper
+Documentation=https://github.com/DarojaAI/linux-headless-setup
+After=openclaw-gateway.service
+Wants=openclaw-gateway.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/compact-openclaw-sessions.sh
+# Threshold parsed from unit Environment= below; THRESHOLD_MIN plugin
+# in the worker script does the gating.
+Environment=THRESHOLD_MIN=__THRESHOLD_MIN__
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+# Detach systemd's stdin/stdout/stderr from any TTY; redirect to journal.
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=multi-user.target

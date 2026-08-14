@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# install-openclaw-compact.sh — install + enable the openclaw-session-compact
+# systemd timer (compaction-poke every 30 min, threshold 120 min idle by
+# default). Decouples compaction cadence from session-lifetime tuning —
+# opt 1 per the 2026-08-14 design discussion.
+#
+# Why a systemd timer (not cron.d): journald trail, idiomatic on Ubuntu 24+,
+# matches the existing `monitoring.sh` precedent (`node_exporter.service`
+# + `node_exporter.timer`).
+#
+# Why a timer (not just the gateway's built-in event-driven triggers):
+# the four event-driven mechanisms (overflow recovery, threshold
+# maintenance, preflight byte-size, mid-turn precheck) only fire under
+# active model traffic. Idle headless agents never trigger any of them,
+# so context grows unboundedly between user pings. The timer pokes every
+# 30 min regardless of activity so sessions idle <= threshold get
+# compacted without waiting for a fresh message.
+#
+# Usage:
+#   sudo bash scripts/install-openclaw-compact.sh           # install + enable
+#   sudo bash scripts/install-openclaw-compact.sh --uninstall   # remove
+#   THRESHOLD_MIN=120 CADENCE_MIN=30 sudo bash scripts/install-openclaw-compact.sh
+#
+# Required tools: systemctl, jq, openclaw
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
+
+UNIT_DIR="/etc/systemd/system"
+SERVICE_FILE="$SCRIPT_DIR/systemd/openclaw-session-compact.service"
+TIMER_FILE="$SCRIPT_DIR/systemd/openclaw-session-compact.timer"
+SERVICE_DEST="$UNIT_DIR/openclaw-session-compact.service"
+TIMER_DEST="$UNIT_DIR/openclaw-session-compact.timer"
+WORKER_FILE="$SCRIPT_DIR/compact-openclaw-sessions.sh"
+WORKER_DEST="/usr/local/bin/compact-openclaw-sessions.sh"
+
+THRESHOLD_MIN="${THRESHOLD_MIN:-120}"
+CADENCE_MIN="${CADENCE_MIN:-30}"
+
+uninstall() {
+  info "Uninstalling openclaw-session-compact timer + service"
+  systemctl disable --now openclaw-session-compact.timer 2>/dev/null || true
+  rm -f "$SERVICE_DEST" "$TIMER_DEST" "$WORKER_DEST"
+  systemctl daemon-reload
+  info "Removed"
+}
+
+install() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: must run as root (timer goes in /etc/systemd/system + needs systemctl daemon-reload)" >&2
+    exit 1
+  fi
+
+  if ! command -v openclaw >/dev/null 2>&1; then
+    echo "WARN: openclaw CLI not found on PATH — service will be enabled but will fail until openclaw is installed (typical order: this script runs after install-docker + openclaw-prep, so it should be present)" >&2
+  fi
+
+  if [ ! -f "$SERVICE_FILE" ]; then
+    echo "FATAL: missing service unit template: $SERVICE_FILE" >&2
+    exit 1
+  fi
+  if [ ! -f "$TIMER_FILE" ]; then
+    echo "FATAL: missing timer unit template: $TIMER_FILE" >&2
+    exit 1
+  fi
+  if [ ! -f "$WORKER_FILE" ]; then
+    echo "FATAL: missing worker script: $WORKER_FILE" >&2
+    exit 1
+  fi
+
+  # Read the threshold into the service unit by envsubst (preserve bash
+  # variables that aren't ours — only THRESHOLD_MIN gets expanded).
+  # Export THRESHOLD_MIN + CADENCE_MIN BEFORE `env -i`, because env -i
+  # clears the environment; the inner subshell needs them as exported
+  # names. SC2097/SC2098.
+  export THRESHOLD_MIN="$THRESHOLD_MIN" CADENCE_MIN="$CADENCE_MIN"
+  env -i PATH="/usr/bin:/bin" \
+      bash -c '
+        set -euo pipefail
+        THRESHOLD_MIN='"$THRESHOLD_MIN"'
+        CADENCE_MIN='"$CADENCE_MIN"'
+        sed "s/__THRESHOLD_MIN__/${THRESHOLD_MIN}/g; s/__CADENCE_MIN__/${CADENCE_MIN}/g" \
+          '"$SERVICE_FILE"' >  "$SERVICE_DEST"
+        cp '"$TIMER_FILE"' "$TIMER_DEST"
+        chmod 0644 "$SERVICE_DEST" "$TIMER_DEST"
+        install -m 0755 '"$WORKER_FILE"' "'"$WORKER_DEST"'"
+      '
+
+  systemctl daemon-reload
+  systemctl enable --now openclaw-session-compact.timer
+
+  info "Installed openclaw-session-compact timer (threshold=${THRESHOLD_MIN}min, cadence=${CADENCE_MIN}min)"
+  info "Schedule:"
+  systemctl list-timers --no-pager openclaw-session-compact.timer || true
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --uninstall) uninstall; exit 0 ;;
+    -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    *) echo "unknown arg: $1" >&2; exit 1 ;;
+  esac
+  shift
+done
+
+install
