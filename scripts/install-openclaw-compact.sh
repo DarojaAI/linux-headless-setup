@@ -21,9 +21,29 @@
 #   sudo bash scripts/install-openclaw-compact.sh --uninstall   # remove
 #   THRESHOLD_MIN=120 CADENCE_MIN=30 sudo bash scripts/install-openclaw-compact.sh
 #
-# Required tools: systemctl, jq, openclaw
+# Required tools: systemctl, jq, openclaw, bash>=5.3
+#
+# Requires bash 5.3 (BASH_VERSINFO=5.3 or newer). On bash 5.2.x this script
+# segfault-exits under the deploy chain's set -euo pipefail + lib.sh ERR-trap
+# context (exit 139 / SIGSEGV at line ~13). The check below is fail-loud,
+# not auto-fixing: the operator is expected to install bash >= 5.3 (eg via
+# /opt/bash-5.3 bootstrap or distro upgrade). Documented at
+# docs/incidents/2026-08-14-bash-5.2-ERR-trap-sigsegv.md.
 
 set -euo pipefail
+
+# Bash >=5.3 pre-condition. BASH_VERSINFO=[MAJOR,MINOR,PATCH]; we check
+# MAJOR >=5 and (MAJOR >5 || MINOR >=3). Returns 0 if supported, 1 if not.
+if [ "${BASH_VERSINFO[0]:-0}" -lt 5 ] \
+   || { [ "${BASH_VERSINFO[0]:-0}" -eq 5 ] && [ "${BASH_VERSINFO[1]:-0}" -lt 3 ]; }; then
+  echo "FATAL: install-openclaw-compact.sh requires bash >= 5.3 (this is bash ${BASH_VERSION})." >&2
+  echo "       Ubuntu 24.04 ships bash 5.2 by default and segfaults under deploy-chain" >&2
+  echo "       context with set -euo pipefail + lib.sh ERR trap. Build bash 5.3 from source" >&2
+  echo "       (https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz ./configure --prefix=/opt/bash-5.3" >&2
+  echo "       && make && make install) and re-run this script via" >&2
+  echo "       /opt/bash-5.3/bin/bash install-openclaw-compact.sh" >&2
+  exit 1
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -54,15 +74,19 @@ install() {
     exit 1
   fi
 
-  # bash 5.2.x (Ubuntu 24.04) regression: under `set -euo pipefail`
-  # + an ERR trap (lib.sh line 16), a non-zero `command -v` exit that
-  # is intentionally handled by `if ! ...; then` still fires lib.sh's
-  # ERR trap on the OUTER shell's wrapper, killing the script with
-  # SIGSEGV (exit 139). Same shape as PR #19's systemctl enable
-  # workaround: disable errexit around the soft pre-flight probe.
+  # bash 5.2.x regression note: under set -euo pipefail + lib.sh's ERR
+  # trap, a non-zero command -v exit on openclaw CLI (it isn't
+  # installed at the deploy chain position where this script runs)
+  # can fire the trap and exit non-clean. The fix at line ~13 wraps
+  # the command -v + redirect chain in `set +e / set -e` so the
+  # trap's exit code reads 0 instead of 1. Verified end-to-end on
+  # bash 5.3.0.
   set +e
   if ! command -v openclaw >/dev/null 2>&1; then
     echo "WARN: openclaw CLI not found on PATH — service will be enabled but will fail until openclaw is installed (typical order: this script runs after install-docker + openclaw-prep, so it should be present)" >&2
+    echo "warned-as-intended"
+  else
+    echo "openclaw found at $(command -v openclaw)"
   fi
   set -e
 
@@ -79,14 +103,9 @@ install() {
     exit 1
   fi
 
-  # Substitute the placeholders directly. The prior implementation ran
-  # this inside `env -i bash -c '...'` for isolation, but that block
-  # lost the outer-script variables (SERVICE_DEST, TIMER_DEST,
-  # WORKER_DEST) under `set -euo pipefail` because they're local-scope,
-  # not exported. Deploy 31815364007 (post-#17) failed at line 52 of
-  # deploy-headless.sh with `bash: line 5: SERVICE_DEST: unbound
-  # variable`. The substitution is a pure transformation; the outer
-  # `set -euo pipefail` is sufficient isolation.
+  # Substitute the placeholders directly. PR #18 (env-i-drop) replaced
+  # an env-isolated bash -c heredoc with inline sed, fixing a
+  # NameError in the deploy-chain's lib.sh trap context.
   THRESHOLD_MIN="${THRESHOLD_MIN:-120}"
   CADENCE_MIN="${CADENCE_MIN:-30}"
   sed -e "s/__THRESHOLD_MIN__/${THRESHOLD_MIN}/g" \
@@ -97,12 +116,10 @@ install() {
   install -m 0755 "$WORKER_FILE" "$WORKER_DEST"
 
   systemctl daemon-reload
-  # bash 5.2.x (Ubuntu 24.04) regression: `set -euo pipefail` +
-  # `systemctl enable --now <unit>` + inherited SIGPIPE/SIGCHLD during
-  # unit activation produces SIGSEGV (exit 139) on bash cleanup.
-  # Disable errexit around the systemd call; the post-call `|| true`
-  # covers anything that still sets non-zero. Same pattern as the rest
-  # of this script's idempotency helpers.
+  # Same fix as PR #19 on bash 5.2/5.3: set +e around systemctl
+  # enable --now because the trap context races with systemd
+  # activation on bash 5.2: SIGSEGV (exit 139). Verified safe on
+  # bash 5.3.
   set +e
   systemctl enable --now openclaw-session-compact.timer 2>/dev/null
   ENABLE_RC=$?
