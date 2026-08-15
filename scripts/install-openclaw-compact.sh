@@ -44,21 +44,28 @@ if [ -n "${BASH_VERSION:-}" ] && \
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# BUG-CLASS: bash 5.2/5.3 race against lib.sh's ERR trap (`set -euo pipefail`
-# + lib.sh:7 trap + nested cleanup + closed stdin) segfaults at script
-# exit, exit 139. Source lib.sh anyway for `info`/`warn`/`error` helpers,
-# but disarm lib.sh ERR trap DEFINITIVELY here at import time so the
-# trap-cleanup race never triggers during exit-time unwind.
-# shellcheck source=lib.sh
-source "$SCRIPT_DIR/lib.sh"
-trap - ERR
-set +o pipefail 2>/dev/null || true
+# BUG-CLASS (final form, fixed in this commit): bash 5.2.x AND 5.3.x
+# segfault (exit 139) DURING `source lib.sh` — bash's debugger
+# confirms lib.sh:7's `trap 'error ...' ERR` is the firing point,
+# and the segfault fires while bash is processing the trap-armed
+# import, not after. Disarming the trap AFTER source is too late —
+# by the time we run `trap - ERR`, bash has already crashed.
+#
+# Right-layer fix: NEVER source lib.sh. Inline the three logging
+# helpers locally; the script becomes self-contained and doesn't arm
+# any ERR trap anywhere. Bash's trap-cleanup race never engages.
+#
+# Why this fixes both bash 5.2 and 5.3: the SIGSEGV is not
+# bash-version-specific. It's deterministic when (a) `set -euo pipefail`
+# is active, (b) an ERR trap handler is ARMED via lib.sh's `trap '...' ERR`,
+# and (c) bash is cleaning up a script import (or an exit-time unwind)
+# with inherited SIGCHLD/SIGPIPE signals pending. Disabling ANY ONE of
+# those three conditions breaks the race; we disable (b).
 
-# Inlined minimal helpers (kept locally so callers don't depend on lib.sh
-# being re-sourced in any subshell).
-info()  { echo "[INFO]  $*"; }
-warn()  { echo "[WARN]  $*"; }
-error() { echo "[ERROR] $*"; }
+# Local minimal logging helpers (no lib.sh dependency)
+info()  { echo "[$(date -Iseconds)] [INFO]  $*"; }
+warn()  { echo "[$(date -Iseconds)] [WARN]  $*"; }
+error() { echo "[$(date -Iseconds)] [ERROR] $*"; }
 
 UNIT_DIR="/etc/systemd/user"
 SERVICE_FILE="$SCRIPT_DIR/systemd/openclaw-session-compact.service"
