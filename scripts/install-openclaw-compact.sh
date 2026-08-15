@@ -25,6 +25,24 @@
 
 set -euo pipefail
 
+# ── Bash ≥ 5.3 gate (PR #21 extended; moved BEFORE source lib.sh) ──
+# On bash 5.2.21 (Ubuntu 24.04 default), `set -euo pipefail` + lib.sh's
+# ERR trap + nested `bash` invocation segfaults (exit 139 SIGSEGV) in
+# the trap-cleanup race. The only safe path is to refuse to run on
+# bash < 5.3 BEFORE anything touches the offending code path.
+# We do NOT source lib.sh nor depend on any ERR trap here — just a
+# bare substring match on BASH_VERSION.
+if [ -n "${BASH_VERSION:-}" ] && \
+   ! { printf '%s\n' "$BASH_VERSION" | grep -Eq '^(5\.[3-9]|[6-9]\.|[0-9]{2,})'; }; then
+  >&2 echo "FATAL: install-openclaw-compact.sh requires bash >= 5.3 (this is bash ${BASH_VERSION})."
+  >&2 echo "  Ubuntu 24.04 ships bash 5.2 by default. Install bash 5.3 from upstream:"
+  >&2 echo "    wget https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz"
+  >&2 echo "    cd bash-5.3 && ./configure --prefix=/opt/bash-5.3 --enable-readline && make -j2 && make install"
+  >&2 echo "  Then invoke this script with /opt/bash-5.3/bin/bash."
+  >&2 echo "  Or run deploy-headless.sh, which routes through /opt/bash-5.3/bin/bash."
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"

@@ -47,9 +47,20 @@ bash "$SCRIPT_DIR/scripts/user.sh"
 # linux-desktop-seed). Must run AFTER user.sh (so APP_USER exists) and
 # BEFORE monitoring.sh (so the docker daemon is up before node_exporter
 # and friends probe it).
-bash "$SCRIPT_DIR/scripts/install-docker.sh"
-bash "$SCRIPT_DIR/scripts/monitoring.sh"
-bash "$SCRIPT_DIR/scripts/install-openclaw-compact.sh"
-bash "$SCRIPT_DIR/scripts/openclaw-prep.sh"
+# BUG-CLASS: bash 5.2.21 + lib.sh ERR trap segfaults under `set -euo pipefail`
+# exit 139. Route through /opt/bash-5.3/bin/bash which we built on the VM
+# during the 2026-08-14 SIGSEGV investigation. Falls back to system bash
+# with a warning if /opt/bash-5.3 isn't present (the gate inside
+# install-openclaw-compact.sh itself will abort cleanly if so).
+if [ -x /opt/bash-5.3/bin/bash ]; then
+  BASH=/opt/bash-5.3/bin/bash
+else
+  warn "/opt/bash-5.3/bin/bash not found, falling back to system bash (compaction install may segfault)"
+  BASH=bash
+fi
+"$BASH" "$SCRIPT_DIR/scripts/install-docker.sh"
+"$BASH" "$SCRIPT_DIR/scripts/monitoring.sh"
+"$BASH" "$SCRIPT_DIR/scripts/install-openclaw-compact.sh"
+"$BASH" "$SCRIPT_DIR/scripts/openclaw-prep.sh"
 
 info "=== deploy-headless.sh complete ==="
