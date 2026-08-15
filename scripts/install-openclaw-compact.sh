@@ -47,7 +47,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-UNIT_DIR="/etc/systemd/system"
+UNIT_DIR="/etc/systemd/user"
 SERVICE_FILE="$SCRIPT_DIR/systemd/openclaw-session-compact.service"
 TIMER_FILE="$SCRIPT_DIR/systemd/openclaw-session-compact.timer"
 SERVICE_DEST="$UNIT_DIR/openclaw-session-compact.service"
@@ -68,7 +68,7 @@ uninstall() {
 
 install() {
   if [ "$(id -u)" -ne 0 ]; then
-    echo "ERROR: must run as root (timer goes in /etc/systemd/system + needs systemctl daemon-reload)" >&2
+    echo "ERROR: must run as root (timer/unit live in /etc/systemd/user; the install + systemctl --user --global enable need root)" >&2
     exit 1
   fi
 
