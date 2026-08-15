@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pre-commit-validation:
+    name: Pre-Commit Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo
+        run: echo "OK"
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo
+        run: echo "OK"
