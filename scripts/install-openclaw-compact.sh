@@ -129,6 +129,20 @@ install() {
   info "Installed openclaw-session-compact timer (threshold=${THRESHOLD_MIN}min, cadence=${CADENCE_MIN}min)"
   info "Schedule:"
   systemctl list-timers --no-pager openclaw-session-compact.timer || true
+
+  # bash 5.2.x / 5.3.x SIGSEGV class (Ubuntu 24.04): the function-end /
+  # script-exit path runs lib.sh's ERR trap cleanup under inherited
+  # SIGCHLD/SIGPIPE from `systemctl enable --now` and segfaults at
+  # bash 5.2.21 (exit 139). PR #19 wrapped the syscall itself; that
+  # never covered the trap-cleanup path because it fires AFTER the
+  # wrapped call returns to set -e. Right-layer fix: disarm lib.sh's
+  # ERR trap at the exit boundary so bash's cleanup race unwinds
+  # cleanly. The install above already succeeded by this point —
+  # any further error is operator-noisy but not actionable here.
+  trap - ERR
+  set +e
+  set +o pipefail 2>/dev/null || true
+  return 0
 }
 
 while [ $# -gt 0 ]; do
@@ -140,4 +154,11 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# Same exit-boundary disarm at script level: lib.sh's ERR trap can
+# still be armed by the script-import path, so right before we call
+# the install() function we explicitly clear it. install() will clear
+# it again at its end (defensive).
+trap - ERR
+set +e
+set +o pipefail 2>/dev/null || true
 install
