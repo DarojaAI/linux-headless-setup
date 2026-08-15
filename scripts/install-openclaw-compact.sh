@@ -44,8 +44,21 @@ if [ -n "${BASH_VERSION:-}" ] && \
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# BUG-CLASS: bash 5.2/5.3 race against lib.sh's ERR trap (`set -euo pipefail`
+# + lib.sh:7 trap + nested cleanup + closed stdin) segfaults at script
+# exit, exit 139. Source lib.sh anyway for `info`/`warn`/`error` helpers,
+# but disarm lib.sh ERR trap DEFINITIVELY here at import time so the
+# trap-cleanup race never triggers during exit-time unwind.
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
+trap - ERR
+set +o pipefail 2>/dev/null || true
+
+# Inlined minimal helpers (kept locally so callers don't depend on lib.sh
+# being re-sourced in any subshell).
+info()  { echo "[INFO]  $*"; }
+warn()  { echo "[WARN]  $*"; }
+error() { echo "[ERROR] $*"; }
 
 UNIT_DIR="/etc/systemd/user"
 SERVICE_FILE="$SCRIPT_DIR/systemd/openclaw-session-compact.service"
