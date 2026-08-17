@@ -9,7 +9,13 @@
 #
 # LAYER:    L2 (runs after terraform-hcloud-linux-vm L1 provisioning)
 # =============================================================================
-set -euo pipefail
+# IMPORTANT: do NOT enable `set -euo pipefail` here. Combined with the
+# `trap '…' ERR` that lib.sh used to set, this pattern segfaults
+# (rc=139) under bash 5.2/5.3 when this script is dispatched via SSH
+# from the Linux-desktop-seed deploy chain (see PRs #86de02c, #7723a26
+# in linux-headless-setup; matching anchor in AGENTS.md). lib.sh now
+# has no ERR trap, and this orchestrator relies on per-sub-script
+# error handling instead.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -31,6 +37,9 @@ fi
 
 # ── Source library ──
 # shellcheck source=scripts/lib.sh
+# Source the lib for logging helpers only; lib.sh itself is now
+# trap-free and pipefail-disabled to stay clear of the bash 5.2/5.3
+# SIGSEGV class.
 source "$SCRIPT_DIR/scripts/lib.sh"
 
 info "=== deploy-headless.sh starting ==="

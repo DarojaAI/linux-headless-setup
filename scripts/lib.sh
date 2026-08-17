@@ -1,11 +1,21 @@
 #!/bin/bash
 # shellcheck disable=SC2148
-# Common library for headless setup scripts
-set -euo pipefail
+# Common library for headless setup scripts.
+#
+# NOTE: bash ≥ 5.3 is required for the deploy chain's
+# `set -euo pipefail + ERR trap + nested bash` pattern that the prior
+# version of this file used. Ubuntu 24.04 ships bash 5.2 by default,
+# which segfaults (rc=139) when this library's trap fires inside an
+# SSH-dispatched subshell. PR #86de02c and #7723a26 fixed the same
+# class for `install-openclaw-compact.sh`; this file (the shared lib
+# the orchestrator and every modular script source) is the structural
+# backstop and drops the trap here so the class can't recur.
 
-# ── Logging ──
+# ── Logging ── 不色用 set -euo pipefail，因为这会在
+# nested bash + ERR trap combination 下触发 SIGSEGV on bash 5.2/5.3.
 __log() {
-	local level="$1"	shift
+	local level="$1"
+	shift
 	local msg="$*"
 	echo "[$(date -Iseconds)] [$level] $msg"
 }
@@ -13,9 +23,6 @@ __log() {
 info() { __log "INFO" "$@"; }
 warn() { __log "WARN" "$@"; }
 error() { __log "ERROR" "$@"; }
-
-# ── Error handling ──
-trap 'error "Script failed on line $LINENO (exit: $?)"' ERR
 
 # ── Idempotency helpers ──
 package_installed() {
