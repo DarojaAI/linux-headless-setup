@@ -3,8 +3,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib.sh
-source "$SCRIPT_DIR/lib.sh"
+
+# Local minimal logging helpers (no lib.sh dependency — see install-openclaw-compact.sh
+# in the same commit range for why sourcing lib.sh + ERR trap segfaults bash 5.2/5.3).
+info()  { echo "[$(date -Iseconds)] [INFO]  $*"; }
+warn()  { echo "[$(date -Iseconds)] [WARN]  $*"; }
+error() { echo "[$(date -Iseconds)] [ERROR] $*"; }
+
+# ── User defaults (replaces lib.sh's APP_USER/APP_HOME export) ──
+APP_USER="${APP_USER:-desktopuser}"
+APP_HOME="/home/$APP_USER"
+export APP_USER APP_HOME
 
 info "Starting OpenClaw prep..."
 
