@@ -13,6 +13,7 @@ mkdir -p "$APP_HOME/.openclaw/scripts/maintenance"
 mkdir -p "$APP_HOME/.openclaw/scripts/monitor"
 mkdir -p "$APP_HOME/.openclaw/skills"
 mkdir -p "$APP_HOME/.openclaw/config"
+mkdir -p "$APP_HOME/.openclaw/extensions"
 mkdir -p /usr/local/bin
 mkdir -p /tmp/config
 mkdir -p /etc/systemd/system
