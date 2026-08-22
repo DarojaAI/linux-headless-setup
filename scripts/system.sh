@@ -3,8 +3,22 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib.sh
-source "$SCRIPT_DIR/lib.sh"
+
+# Local minimal logging helpers (no lib.sh dependency — see install-openclaw-compact.sh
+# in the same commit range for why sourcing lib.sh + ERR trap segfaults bash 5.2/5.3).
+info()  { echo "[$(date -Iseconds)] [INFO]  $*"; }
+warn()  { echo "[$(date -Iseconds)] [WARN]  $*"; }
+error() { echo "[$(date -Iseconds)] [ERROR] $*"; }
+package_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
+apt_install() {
+	local pkg="$1"
+	if package_installed "$pkg"; then
+		info "Package already installed: $pkg"
+		return 0
+	fi
+	info "Installing: $pkg"
+	apt-get install -y --no-install-recommends "$pkg"
+}
 
 info "Starting system baseline..."
 
