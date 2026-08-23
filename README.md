@@ -11,7 +11,7 @@ Used as Layer 2 in the DarojaAI provisioning stack:
 
 - Base packages: curl, git, jq, tmux, build-essential
 - Security: UFW, fail2ban, unattended-upgrades, SSH hardening
-- Runtimes: Node.js 22, Python 3 + pip
+- Runtimes: Node.js 22, Python 3 + pip, **pyenv-managed Python 3.14 for `desktopuser`**
 - Monitoring: Prometheus node_exporter, logrotate, persistent journald
 - User: `desktopuser` with passwordless sudo
 

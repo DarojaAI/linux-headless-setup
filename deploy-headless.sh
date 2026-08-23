@@ -61,6 +61,7 @@ fi
 bash "$SCRIPT_DIR/scripts/system.sh"
 bash "$SCRIPT_DIR/scripts/security.sh"
 bash "$SCRIPT_DIR/scripts/runtimes.sh"
+bash "$SCRIPT_DIR/scripts/install-python.sh"
 bash "$SCRIPT_DIR/scripts/user.sh"
 bash "$SCRIPT_DIR/scripts/install-docker.sh"
 bash "$SCRIPT_DIR/scripts/monitoring.sh"
