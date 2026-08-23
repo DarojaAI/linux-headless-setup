@@ -55,7 +55,17 @@ if [ -d "$PYENV_ROOT" ] && command -v pyenv &>/dev/null; then
 	info "pyenv already installed at $PYENV_ROOT — skipping install"
 else
 	info "Installing pyenv via official installer..."
+	# AGENTS.md anchor: 'Ship the fix that turns the segfault into a clean ERR
+	# message before root-cause completes. Gate + FATAL beats another wrapper
+	# bandaid when the bug is hard to reproduce in isolation.' Under the deploy
+	# chain's set -euo pipefail + ERR trap + nested bash pattern, the inner
+	# curl|bash failure is masked (curl returns non-zero from the pipe, but
+	# the consuming-bash exit-status is what propagates). Surface it.
+	set +euo pipefail
 	curl -fsSL https://pyenv.run | bash
+	rc=${PIPESTATUS[0]}
+	set -euo pipefail
+	[ "$rc" -ne 0 ] && warn "pyenv.run installer returned $rc; install-python.sh cannot continue" && exit "$rc"
 fi
 
 # ── Ensure pyenv is on PATH (for this script) ──
