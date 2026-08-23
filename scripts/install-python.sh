@@ -15,6 +15,27 @@
 
 set -euo pipefail
 
+# ── Bash version self-gate (right-layer fix for bash 5.2/5.3 SIGSEGV) ──
+# AGENTS.md anchor: "Bash >= 5.3 is required for the deploy chain's
+# set -euo pipefail + ERR trap + nested bash pattern". On bash 5.2.x
+# the subsequent `eval "$(pyenv init --path)"` lands a SIGSEGV.
+# Self-route to /opt/bash-5.3/bin/bash if it's present; otherwise fail
+# fast with the canonical install path so the deploy surface names
+# the missing prereq rather than hiding it under `success`.
+if printf '%s
+' "$BASH_VERSION" | awk -F. '{ exit (!($1 >= 5) || ($1 == 5 && $2 >= 3) ? 0 : 1) }'; then
+    : # bash >= 5.3 — proceed
+else
+    if [ -x "/opt/bash-5.3/bin/bash" ]; then
+        exec /opt/bash-5.3/bin/bash "$0" "$@"
+    else
+        echo "ERROR: install-python.sh requires bash >= 5.3 (have $BASH_VERSION)." >&2
+        echo "Run cli-tools/install-bash-5.3-on-vm.sh on the runner or VM first." >&2
+        exit 1
+    fi
+fi
+
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
