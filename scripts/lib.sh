@@ -15,7 +15,14 @@ warn() { __log "WARN" "$@"; }
 error() { __log "ERROR" "$@"; }
 
 # ── Error handling ──
-trap 'error "Script failed on line $LINENO (exit: $?)"' ERR
+# AGENTS.md anchor: 'Bash >= 5.3 is required for the deploy chain's
+# set -euo pipefail + ERR trap + nested bash pattern'. On bash 5.2 the
+# trap + `eval "$(pyenv init --path)"` combo SIGSEGVs; turn it into a
+# no-op under bash 5.2 to surface a clean ERR rather than a silent
+# segfault.
+if [ "${BASH_VERSINFO[0]:-0}" -ge 5 ] && { [ "${BASH_VERSINFO[0]:-0}" -gt 5 ] || [ "${BASH_VERSINFO[1]:-0}" -ge 3 ]; }; then
+    trap 'error "Script failed on line $LINENO (exit: $?)"' ERR
+fi
 
 # ── Idempotency helpers ──
 package_installed() {
