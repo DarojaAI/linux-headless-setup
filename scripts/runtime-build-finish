@@ -1,0 +1,195 @@
+#!/bin/bash
+# scripts/runtime-build-finish — L2 binary for the L3a-deployed
+# runtime-build-finish seam. Implements the v0.1 (headless shape)
+# wire-format documented in
+# DarojaAI/linux-desktop-seed docs/contracts/L2-RUNTIME-BUILD-FINISH.md.
+#
+# Subcommands:
+#   --check=sudoers   — /etc/sudoers.d/$APP_USER exists, no blanket NOPASSWD
+#   --check=bash-5.3  — /opt/bash-5.3/bin/bash exists, version ≥ 5.3
+#   --all             — both checks; aggregate on stdout
+#
+# Conventions match LHS lib.sh: `set -euo pipefail` plus bash-version-gated
+# ERR trap, read-only probes, stdout = JSON, stderr = diagnostics.
+#
+# Exit codes:
+#   0  delegated / healthy
+#   1  unhealthy
+#   2  usage error
+#   64 unknown subcommand (EX_USAGE)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
+
+RUNTIME_BUILD_FINISH_BASH_PATH="${RUNTIME_BUILD_FINISH_BASH_PATH:-/opt/bash-5.3/bin/bash}"
+RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR=5
+RUNTIME_BUILD_FINISH_BASH_MIN_MINOR=3
+
+# Idempotent local emit.
+_rbf_emit() {
+	local status="$1"; shift
+	local signals="$1"; shift
+	local message="${1:-}"
+	if [ -n "$message" ]; then
+		local msg_escaped
+		msg_escaped="${message//\\/\\\\}"
+		msg_escaped="${msg_escaped//\"/\\\"}"
+		printf '{"status":"%s","signals":%s,"message":"%s"}\n' \
+			"$status" "$signals" "$msg_escaped"
+	else
+		printf '{"status":"%s","signals":%s}\n' "$status" "$signals"
+	fi
+	if [ "$status" = "healthy" ]; then
+		return 0
+	fi
+	return 1
+}
+
+# ── Subcheck: sudoers ────────────────────────────────────────────────
+subcheck_sudoers() {
+	local app_user="${APP_USER:-desktopuser}"
+	local f="/etc/sudoers.d/${app_user}"
+	local exists="false"
+	local blanket_nopasswd="false"
+	[ -f "$f" ] && exists="true"
+	if [ "$exists" = "true" ]; then
+		# Canonical probe: blanket `NOPASSWD: ALL` would mean the L3a
+		# hardening pipeline didn't run (or got reverted). We don't trust
+		# `visudo -c` here — the question is what the running sudo will
+		# actually do, not what parses.
+		if sudo -l -U "$app_user" 2>/dev/null | grep -qE "^.*NOPASSWD:[[:space:]]*ALL$"; then
+			blanket_nopasswd="true"
+		fi
+	fi
+	local signals
+	signals=$(printf '{"exists":%s,"blanket_nopasswd":%s,"path":"%s"}' \
+		"$exists" "$blanket_nopasswd" "$f")
+	if [ "$exists" = "true" ] && [ "$blanket_nopasswd" = "false" ]; then
+		_rbf_emit healthy "$signals"
+		return 0
+	fi
+	_rbf_emit unhealthy "$signals" \
+		"sudoers at $f not hardened (exists=$exists, blanket_nopasswd=$blanket_nopasswd)"
+	return 1
+}
+
+# ── Subcheck: bash-5.3 ───────────────────────────────────────────────
+subcheck_bash_5_3() {
+	local p="$RUNTIME_BUILD_FINISH_BASH_PATH"
+	local binary_exists="false"
+	local binary_version_ok="false"
+	local version=""
+	[ -x "$p" ] && binary_exists="true"
+	if [ "$binary_exists" = "true" ]; then
+		version="$("$p" --version 2>/dev/null | head -n 1 || true)"
+		if [ -n "$version" ]; then
+			local v_major v_rest v_minor
+			v_major="${version%%.*}"
+			v_rest="${version#*.}"
+			v_minor="${v_rest%%.*}"
+			if [ "$v_major" -gt "$RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR" ] 2>/dev/null; then
+				binary_version_ok="true"
+			elif { [ "$v_major" = "$RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR" ] && \
+					   [ "$v_minor" -ge "$RUNTIME_BUILD_FINISH_BASH_MIN_MINOR" ] ;} 2>/dev/null; then
+				binary_version_ok="true"
+			fi
+		fi
+	fi
+	local signals
+	signals=$(printf '{"binary_exists":%s,"binary_version_ok":%s,"path":"%s","version":"%s"}' \
+		"$binary_exists" "$binary_version_ok" "$p" "$version")
+	if [ "$binary_exists" = "true" ] && [ "$binary_version_ok" = "true" ]; then
+		_rbf_emit healthy "$signals"
+		return 0
+	fi
+	_rbf_emit unhealthy "$signals" \
+		"bash-5.3 not installed at $p (binary_exists=$binary_exists, binary_version_ok=$binary_version_ok)"
+	return 1
+}
+
+# ── Dispatch ─────────────────────────────────────────────────────────
+usage() {
+	cat <<'EOF'
+Usage: runtime-build-finish --check=<sudoers|bash-5.3> | --all
+
+Verify-only probes of L2-installed state. L2 owns steady-state
+enforcement; this binary is for L3a verification, not application.
+EOF
+	exit 2
+}
+
+arg=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--check=*)
+			arg="${1#--check=}"
+			;;
+		--check)
+			arg="${2:?--check needs argument}"
+			shift
+			;;
+		--all)
+			arg="--all"
+			;;
+		-h|--help)
+			usage
+			;;
+		*)
+			echo '{"status":"unknown-check","signals":{},"message":"unknown argument"}' >&2
+			exit 2
+			;;
+	esac
+	shift
+done
+
+if [ -z "$arg" ]; then
+	usage
+fi
+
+if [ "$arg" = "--all" ]; then
+	overall=0
+	results=""
+	# Run each subcheck with errexit disabled in a subshell only, so we
+	# capture rc without polluting the outer errexit state. The subshells
+	# emit JSON to stdout, which we discard here — the aggregation lives
+	# in the wrapper's `status` + per-key signals.
+	#
+	# Subcheck iteration names use hyphens (matching the wire-format
+	# `--check=bash-5.3` arg); function names in this binary use
+	# underscores (bash doesn't allow hyphens in function identifiers).
+	# Map wire-name → function-name with `${c//-/_}`. Don't change the
+	# wire-format keys — they're documented in
+	# docs/contracts/L2-RUNTIME-BUILD-FINISH.md §3.
+	for c in sudoers bash-5.3; do
+		# Map wire-name → function-name: bash 5/5.1 reject `-` and `.`
+		# in function identifiers, so the wire-format name (`bash-5.3`)
+		# has to be translated to underscored form (`bash_5_3`) before
+		# dispatch. Pattern is `bash-5.3` → `bash_5_3`. The character-
+		# class `[-.]` covers BOTH punctuation marks we currently use.
+		fn="subcheck_${c//[-.]/_}"
+		if ( set +e; "$fn" >/dev/null ) ; then
+			results="${results}${results:+,}\"$c\":\"delegated\""
+		else
+			overall=1
+			results="${results}${results:+,}\"$c\":\"unhealthy\""
+		fi
+	done
+	if [ "$overall" = "0" ]; then
+		printf '{"status":"delegated","signals":{%s}}\n' "$results"
+	else
+		printf '{"status":"unhealthy","signals":{%s}}\n' "$results"
+	fi
+	exit "$overall"
+fi
+
+case "$arg" in
+	sudoers)    subcheck_sudoers ;;
+	bash-5.3)   subcheck_bash_5_3 ;;
+	*)
+		printf '{"status":"unknown-check","signals":{},"message":"%s"}\n' "$arg" >&2
+		exit 64
+		;;
+esac
