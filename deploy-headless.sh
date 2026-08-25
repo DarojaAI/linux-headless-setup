@@ -62,5 +62,17 @@ fi
 "$BASH" "$SCRIPT_DIR/scripts/monitoring.sh"
 "$BASH" "$SCRIPT_DIR/scripts/install-openclaw-compact.sh"
 "$BASH" "$SCRIPT_DIR/scripts/openclaw-prep.sh"
+# install-runtime-seam-binaries.sh installs the bash binaries that
+# linux-desktop-seed's verify-vm-state.sh and runtime-build-finish.sh
+# call into at deploy time. Same bash-5.3 routing as the other gated
+# calls (lib.sh ERR-trap SIGSEGV class). MUST run LAST: openclaw-prep.sh
+# leaves the user-systemd path ready, and the contract-shape smoke at
+# the bottom of the install helper wants the runtime wired up. Wire-
+# compat with the L3a fallback library (linux-desktop-seed#1428) is
+# verified by the install helper's parseable-JSON assertion — a fall-
+# through with non-parseable JSON would surface as install-helper
+# exit 1, which `set -e` propagates here as a deploy failure. Don't
+# reorder this without re-reading docs/contracts/L2-RUNTIME-CLI.md.
+"$BASH" "$SCRIPT_DIR/scripts/install-runtime-seam-binaries.sh"
 
 info "=== deploy-headless.sh complete ==="
