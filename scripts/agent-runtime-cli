@@ -1,0 +1,201 @@
+#!/bin/bash
+# scripts/agent-runtime-cli — L2 binary for the L3a-deployed verify-vm-state.sh
+# seam. Implements the v0.1 (headless shape) wire-format documented in
+# DarojaAI/linux-desktop-seed docs/contracts/L2-RUNTIME-CLI.md.
+#
+# Subcommands:
+#   is-runtime-ready       — app user exists, loginctl linger, bash 5.3 on PATH
+#   is-user-systemd-active — service-manager-availability for $APP_USER
+#
+# Install:
+#   install -m 0755 scripts/agent-runtime-cli /usr/local/lib/linux-headless-setup/
+#   (or run scripts/install-runtime-seam-binaries.sh once idempotently)
+#
+# Conventions (matching LHS lib.sh):
+#   • `set -euo pipefail` plus the bash-version-gated ERR trap.
+#   • Read-only; never mutates host state.
+#   • Stdout is wire-format JSON. Stderr is human-readable diagnostics.
+#
+# Exit code:
+#   0  healthy
+#   1  unhealthy
+#   64 unknown subcommand (EX_USAGE)
+#   2  parse error in argv
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
+
+# Mirror the threshold from the contract — bash ≥ 5.3 is required for
+# the deploy chain's `set -euo pipefail + ERR trap + nested bash` pattern.
+RUNTIME_CLI_BASH_PATH="${RUNTIME_CLI_BASH_PATH:-/opt/bash-5.3/bin/bash}"
+RUNTIME_CLI_BASH_MIN_MAJOR=5
+RUNTIME_CLI_BASH_MIN_MINOR=3
+
+# Emit one result line and exit with the corresponding status.
+# Args: status signals_json message
+_arc_emit() {
+	local status="${1:?status required}"
+	local signals_json="${2:?signals_json required}"
+	local message="${3:-}"
+	# Replace shell-quote the strings we receive — both call sites use
+	# printf to compose signals_json, so the struct characters are
+	# trustworthy. We single-quote the message and JSON-escape the
+	# backslash / double-quote pair — sufficient for our message text,
+	# which is human diagnostic info, never a JSON-parsable string.
+	if [ -n "$message" ]; then
+		local msg_escaped
+		msg_escaped="${message//\\/\\\\}"
+		msg_escaped="${msg_escaped//\"/\\\"}"
+		printf '{"status":"%s","signals":%s,"message":"%s"}\n' \
+			"$status" "$signals_json" "$msg_escaped"
+	else
+		printf '{"status":"%s","signals":%s}\n' "$status" "$signals_json"
+	fi
+	if [ "$status" = "healthy" ]; then
+		return 0
+	fi
+	return 1
+}
+
+# ── Subcommand: is-runtime-ready ───────────────────────────────────────
+# Wire shape:
+#   {"status":..., "signals":{"app_user_exists":..., "loginctl_linger":...,
+#                              "bash_5_3_on_path":...}}
+subcmd_is_runtime_ready() {
+	local app_user="${APP_USER:-desktopuser}"
+
+	local app_user_exists="false"
+	if id "$app_user" >/dev/null 2>&1; then
+		app_user_exists="true"
+	fi
+
+	# loginctl show-user prints nothing on stderr; --property=Linger --value
+	# outputs the bare value, "yes" or "no". When the user doesn't exist,
+	# output is empty. We gate by app_user_exists first to avoid the false
+	# "unhealthy" classification for the no-such-user case (caught below).
+	local loginctl_linger="false"
+	if [ "$app_user_exists" = "true" ] && command -v loginctl >/dev/null 2>&1; then
+		local linger_value
+		linger_value="$(loginctl show-user "$app_user" --property=Linger --value 2>/dev/null || true)"
+		if [ "$linger_value" = "yes" ]; then
+			loginctl_linger="true"
+		fi
+	fi
+
+	# bash_5_3_on_path — probe the L2-routed binary, not the active
+	# interpreter. `bash --version` returns "GNU bash, version 5.3.x..." on
+	# first line. Major/minor are positional.
+	local bash_5_3_on_path="false"
+	if [ -x "$RUNTIME_CLI_BASH_PATH" ]; then
+		local first_line v_major v_rest v_minor
+		first_line="$("$RUNTIME_CLI_BASH_PATH" --version 2>/dev/null | head -n 1 || true)"
+		v_major="${first_line%%.*}"
+		v_rest="${first_line#*.}"
+		v_minor="${v_rest%%.*}"
+		if [ "$v_major" -gt "$RUNTIME_CLI_BASH_MIN_MAJOR" ] 2>/dev/null; then
+			bash_5_3_on_path="true"
+		elif { [ "$v_major" = "$RUNTIME_CLI_BASH_MIN_MAJOR" ] && \
+				   [ "$v_minor" -ge "$RUNTIME_CLI_BASH_MIN_MINOR" ] ;} 2>/dev/null; then
+			bash_5_3_on_path="true"
+		fi
+	fi
+
+	local signals
+	signals=$(printf '{"app_user_exists":%s,"loginctl_linger":%s,"bash_5_3_on_path":%s}' \
+		"$app_user_exists" "$loginctl_linger" "$bash_5_3_on_path")
+
+	if [ "$app_user_exists" != "true" ] \
+	   || [ "$loginctl_linger" != "true" ] \
+	   || [ "$bash_5_3_on_path" != "true" ]; then
+		_arc_emit unhealthy "$signals" \
+			"is-runtime-ready: at least one signal is unhealthy (app_user_exists=$app_user_exists loginctl_linger=$loginctl_linger bash_5_3_on_path=$bash_5_3_on_path)"
+		return 1
+	fi
+
+	_arc_emit healthy "$signals"
+	return 0
+}
+
+# ── Subcommand: is-user-systemd-active ─────────────────────────────────
+# Wire shape:
+#   {"status":..., "signals":{"user_systemd_running":...,
+#                              "user_systemd_unit_path":"...",
+#                              "last_failed_unit":"..."}}
+subcmd_is_user_systemd_active() {
+	local app_user="${APP_USER:-desktopuser}"
+
+	local user_systemd_running="false"
+	local user_systemd_unit_path=""
+	local last_failed_unit=""
+
+	if command -v systemctl >/dev/null 2>&1 && id "$app_user" >/dev/null 2>&1; then
+		local uid
+		uid="$(id -u "$app_user" 2>/dev/null || true)"
+		if [ -n "$uid" ]; then
+			local isr_output
+			isr_output="$(sudo -u "$app_user" \
+				XDG_RUNTIME_DIR="/run/user/$uid" \
+				systemctl --user is-system-running 2>/dev/null || true)"
+			case "$isr_output" in
+				running|degraded) user_systemd_running="true" ;;
+			esac
+
+			user_systemd_unit_path="$(sudo -u "$app_user" \
+				XDG_RUNTIME_DIR="/run/user/$uid" \
+				systemctl --user show --property=UserStorage --value 2>/dev/null || true)"
+			# Guard against unquoted empty values leaking into JSON awkwardly
+			if [ -z "$user_systemd_unit_path" ]; then
+				user_systemd_unit_path=""
+			fi
+
+			last_failed_unit="$(sudo -u "$app_user" \
+				XDG_RUNTIME_DIR="/run/user/$uid" \
+				systemctl --user --state=failed --no-legend --no-pager 2>/dev/null \
+				| awk 'NF{gsub(/[^A-Za-z0-9_.@-]/, "", $1); if(length($1)){print $1; exit}}' || true)"
+			if [ -z "$last_failed_unit" ]; then
+				last_failed_unit=""
+			fi
+		fi
+	fi
+
+	local signals
+	signals=$(printf '{"user_systemd_running":%s,"user_systemd_unit_path":"%s","last_failed_unit":"%s"}' \
+		"$user_systemd_running" "$user_systemd_unit_path" "$last_failed_unit")
+
+	if [ "$user_systemd_running" != "true" ]; then
+		_arc_emit unhealthy "$signals" \
+			"user-systemd manager is not running for $app_user (probe: systemctl --user is-system-running)"
+		return 1
+	fi
+
+	_arc_emit healthy "$signals"
+	return 0
+}
+
+# ── Dispatch ──────────────────────────────────────────────────────────
+usage() {
+	cat <<'EOF'
+Usage: agent-runtime-cli <subcommand>
+
+Subcommands:
+  is-runtime-ready        Probe whether the runtime is ready for the OpenClaw
+                          gateway to live in (service user, linger, bash 5.3).
+  is-user-systemd-active  Probe whether the user's systemd user instance is
+                          currently reachable.
+EOF
+	exit 2
+}
+
+case "${1:-}" in
+	is-runtime-ready)       shift; subcmd_is_runtime_ready "$@" ;;
+	is-user-systemd-active) shift; subcmd_is_user_systemd_active "$@" ;;
+	-h|--help)              usage ;;
+	"")                     usage ;;
+	*)
+		printf '{"status":"unknown-subcommand","signals":{},"message":"%s"}\n' "$1" >&2
+		exit 64
+		;;
+esac
