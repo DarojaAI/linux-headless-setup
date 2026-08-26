@@ -86,10 +86,11 @@ subcheck_bash_5_3() {
 	if [ "$binary_exists" = "true" ]; then
 		version="$("$p" --version 2>/dev/null | head -n 1 || true)"
 		if [ -n "$version" ]; then
-			local v_major v_rest v_minor
-			v_major="${version%%.*}"
-			v_rest="${version#*.}"
-			v_minor="${v_rest%%.*}"
+			local v_major=0 v_minor=0
+			if [[ "$version" =~ ([0-9]+)\.([0-9]+) ]]; then
+				v_major="${BASH_REMATCH[1]}"
+				v_minor="${BASH_REMATCH[2]}"
+			fi
 			if { [ "$v_major" -gt "$RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR" ]; } 2>/dev/null; then
 				binary_version_ok="true"
 			elif { [ "$v_major" = "$RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR" ] && \

@@ -87,14 +87,19 @@ subcmd_is_runtime_ready() {
 
 	# bash_5_3_on_path — probe the L2-routed binary, not the active
 	# interpreter. `bash --version` returns "GNU bash, version 5.3.x..." on
-	# first line. Major/minor are positional.
+	# first line. Major/minor extracted via bash regex against the bare
+	# version line. Prior shape `${var%%.*}` truncated on the first dot,
+	# but `GNU bash, version 5.3.0(...)` has no dot before the major
+	# version, so v_major captured the entire "GNU bash, version 5" prefix
+	# and arithmetic coercion forced it to 0.
 	local bash_5_3_on_path="false"
 	if [ -x "$RUNTIME_CLI_BASH_PATH" ]; then
-		local first_line v_major v_rest v_minor
+		local first_line v_major=0 v_minor=0
 		first_line="$("$RUNTIME_CLI_BASH_PATH" --version 2>/dev/null | head -n 1 || true)"
-		v_major="${first_line%%.*}"
-		v_rest="${first_line#*.}"
-		v_minor="${v_rest%%.*}"
+		if [[ "$first_line" =~ ([0-9]+)\.([0-9]+) ]]; then
+			v_major="${BASH_REMATCH[1]}"
+			v_minor="${BASH_REMATCH[2]}"
+		fi
 		if { [ "$v_major" -gt "$RUNTIME_CLI_BASH_MIN_MAJOR" ]; } 2>/dev/null; then
 			bash_5_3_on_path="true"
 		elif { [ "$v_major" = "$RUNTIME_CLI_BASH_MIN_MAJOR" ] && \
