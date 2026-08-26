@@ -95,10 +95,10 @@ subcmd_is_runtime_ready() {
 		v_major="${first_line%%.*}"
 		v_rest="${first_line#*.}"
 		v_minor="${v_rest%%.*}"
-		if [ "$v_major" -gt "$RUNTIME_CLI_BASH_MIN_MAJOR" ] 2>/dev/null; then
+		if { [ "$v_major" -gt "$RUNTIME_CLI_BASH_MIN_MAJOR" ]; } 2>/dev/null; then
 			bash_5_3_on_path="true"
 		elif { [ "$v_major" = "$RUNTIME_CLI_BASH_MIN_MAJOR" ] && \
-				   [ "$v_minor" -ge "$RUNTIME_CLI_BASH_MIN_MINOR" ] ;} 2>/dev/null; then
+				   [ "$v_minor" -ge "$RUNTIME_CLI_BASH_MIN_MINOR" ]; } 2>/dev/null; then
 			bash_5_3_on_path="true"
 		fi
 	fi

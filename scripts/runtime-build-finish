@@ -90,10 +90,10 @@ subcheck_bash_5_3() {
 			v_major="${version%%.*}"
 			v_rest="${version#*.}"
 			v_minor="${v_rest%%.*}"
-			if [ "$v_major" -gt "$RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR" ] 2>/dev/null; then
+			if { [ "$v_major" -gt "$RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR" ]; } 2>/dev/null; then
 				binary_version_ok="true"
 			elif { [ "$v_major" = "$RUNTIME_BUILD_FINISH_BASH_MIN_MAJOR" ] && \
-					   [ "$v_minor" -ge "$RUNTIME_BUILD_FINISH_BASH_MIN_MINOR" ] ;} 2>/dev/null; then
+					   [ "$v_minor" -ge "$RUNTIME_BUILD_FINISH_BASH_MIN_MINOR" ]; } 2>/dev/null; then
 				binary_version_ok="true"
 			fi
 		fi
