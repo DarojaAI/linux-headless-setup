@@ -55,9 +55,29 @@ install -m "$INSTALL_MODE" -o "$INSTALL_OWNER" -g "$INSTALL_GROUP" \
     "$SCRIPT_DIR/runtime-build-finish" \
     "$INSTALL_ROOT/runtime-build-finish"
 
+# The binaries both `source "$SCRIPT_DIR/lib.sh"` at runtime, where
+# `$SCRIPT_DIR` resolves to `$INSTALL_ROOT`. Without lib.sh shipped
+# alongside, the binaries crash on line 29 with `lib.sh: No such file
+# or directory` and the post-install smoke check below exits non-zero
+# (deploy-side `verify-vm-state.sh` will then mark the deploy as
+# failed). install(1) with mode 0644 because lib.sh is sourced, not
+# executed.
+install -m 0644 -o "$INSTALL_OWNER" -g "$INSTALL_GROUP" \
+    "$SCRIPT_DIR/lib.sh" \
+    "$INSTALL_ROOT/lib.sh"
+
 info "Installed:"
 info "  $INSTALL_ROOT/agent-runtime-cli"
 info "  $INSTALL_ROOT/runtime-build-finish"
+info "  $INSTALL_ROOT/lib.sh"
+
+# Defensive: lib.sh must be present before the binary smoke check, or
+# the binaries will fail on `source "$SCRIPT_DIR/lib.sh"` regardless
+# of their executable bit.
+if [ ! -r "$INSTALL_ROOT/lib.sh" ]; then
+    error "lib.sh not installed at $INSTALL_ROOT/lib.sh — the runtime binaries require it"
+    exit 1
+fi
 
 # Caller-side smoke: confirm the binaries are executable and emit a
 # parseable JSON shape on their canonical subcommand. If this fails,
