@@ -53,6 +53,45 @@ dpkg-reconfigure -plow unattended-upgrades -f noninteractive || true
 # linux-desktop-setup follows the same pattern — no sshd_config changes.
 if [ -f /etc/ssh/sshd_config ]; then
 	info "Skipping root login hardening — deploy workflow requires root SSH"
+# ── SSH hardening (configurable) ──
+# SSH_ACCESS_MODE controls how the deploy chain connects once cloud-init
+# has finished. Permitted values:
+#   - "desktopuser" (default) — PermitRootLogin `no`. The deploy driver
+#     uses `desktopuser` for all post-cloud-init SSH, mirroring
+#     linux-desktop-seed PR #1463. The deploy-driver side authenticates
+#     as `desktopuser` via a separate SSH key shipped by
+#     ~/.openclaw/deploy-keys/desktopuser_ed25519; root's authorized_keys
+#     is untouched after the cloud-init pass.
+#   - "root" (legacy fallback for envs where desktopuser setup has not yet
+#     landed) — PermitRootLogin `prohibit-password`, matching the prior
+#     cloud-init posture.
+# The default can be overridden with SSH_ACCESS_MODE=root to keep the
+# legacy path alive during migration windows. Idempotent re-render:
+# the script replaces an existing PermitRootLogin line in-place rather
+# than ap-pending a duplicate configuration fragment.
+: "${SSH_ACCESS_MODE:=desktopuser}"
+
+case "$SSH_ACCESS_MODE" in
+	desktopuser) EXPECTED_PERMIT_ROOT="no" ;;
+	root)        EXPECTED_PERMIT_ROOT="prohibit-password" ;;
+	*) warn "Unrecognised SSH_ACCESS_MODE=$SSH_ACCESS_MODE; falling back to 'desktopuser'"
+		SSH_ACCESS_MODE=desktopuser
+		EXPECTED_PERMIT_ROOT="no" ;;
+esac
+
+if [ -f /etc/ssh/sshd_config ]; then
+	info "Applying SSH hardening (mode=$SSH_ACCESS_MODE, target=PermitRootLogin $EXPECTED_PERMIT_ROOT)..."
+	if grep -qE "^#?PermitRootLogin " /etc/ssh/sshd_config; then
+		# Idempotent in-place replacement; re-running this script will
+		# not produce duplicate PermitRootLogin fragments.
+		sed -i -E "s|^#?PermitRootLogin .*|PermitRootLogin $EXPECTED_PERMIT_ROOT|" /etc/ssh/sshd_config
+	else
+		# No existing PermitRootLogin line — append under the SSH defaults.
+		# `printf` rather than `cat <<EOF` so we do not depend on a heredoc
+		# in `set -euo pipefail` here.
+		printf '\nPermitRootLogin %s\n' "$EXPECTED_PERMIT_ROOT" >>/etc/ssh/sshd_config
+	fi
+	systemctl reload ssh >/dev/null 2>&1 || systemctl restart ssh || true
 fi
 
 info "Security hardening complete."
