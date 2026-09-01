@@ -82,5 +82,21 @@ fi
 "$BASH" "$SCRIPT_DIR/scripts/install-runtime-seam-binaries.sh"
 echo "→ install-login-policy.sh"
 "$BASH" "$SCRIPT_DIR/scripts/install-login-policy.sh"
+# install-watchdogs.sh installs the L2 VM watchdogs (hourly /tmp +
+# /var/tmp cleanup sweep, 5-min disk usage WARN) as systemd timers and
+# enables them. Pure L2 watchdogs; idempotent re-runs safe. Runs last —
+# after install-runtime-seam-binaries.sh — so the chain ends with the
+# watchdog units active.
+bash "$SCRIPT_DIR/scripts/install-watchdogs.sh"
+
+# install-apt-policy.sh holds the running kernel + critical packages and
+# restricts unattended-upgrades to the security pocket with no auto-reboot
+# (/etc/apt/apt.conf.d/20-unattended-restrictions). Re-asserts the holds at
+# deploy time; the apt-policy-applied.service one-shot it installs re-asserts
+# at boot. Same bash-5.3 routing as the other gated calls (lib.sh ERR-trap
+# SIGSEGV class). Keep AFTER install-runtime-seam-binaries.sh: nothing after
+# it depends on apt package state (L2 apt policy pin, epic #48).
+echo "→ install-apt-policy.sh"
+"$BASH" "$SCRIPT_DIR/scripts/install-apt-policy.sh"
 
 info "=== deploy-headless.sh complete ==="

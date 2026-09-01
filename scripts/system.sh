@@ -27,6 +27,14 @@ apt_install htop
 apt_install ncdu
 apt_install tree
 
+apt_install vim-tiny
+apt_install bash-completion
+apt_install man-db
+apt_install less
+
+# Sanity (L2 UX baseline, #54): vim-tiny must be wired asthe vim alternative
+update-alternatives --display vim 2>/dev/null | head
+
 # ── Time sync (chrony) ──
 # Layer-2 hardening (#49,epic #48): silent clock drift has broken TLS
 # validation (cert "not yet valid"/"not anymore valid") and auth against
