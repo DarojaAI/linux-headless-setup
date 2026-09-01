@@ -38,6 +38,12 @@ info "Target user: $APP_USER"
 
 # ── Run modular scripts in order ──
 bash "$SCRIPT_DIR/scripts/system.sh"
+# ── L2 sysctl hardening ──
+# optimize.sh MUST run before any sysctl-networking-side deployment
+#(e.g. Docker's ip_forward drop-in / firewalling): its
+# 99-l2-hardening.conf sorts numerically last among /etc/sysctl.d/*.conf,
+# so it wins any conflicts with Hetzner cloud-init defaults.
+bash "$SCRIPT_DIR/scripts/optimize.sh"
 bash "$SCRIPT_DIR/scripts/security.sh"
 bash "$SCRIPT_DIR/scripts/runtimes.sh"
 bash "$SCRIPT_DIR/scripts/user.sh"
