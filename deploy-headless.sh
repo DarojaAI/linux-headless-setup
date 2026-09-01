@@ -80,5 +80,7 @@ fi
 # exit 1, which `set -e` propagates here as a deploy failure. Don't
 # reorder this without re-reading docs/contracts/L2-RUNTIME-CLI.md.
 "$BASH" "$SCRIPT_DIR/scripts/install-runtime-seam-binaries.sh"
+echo "→ install-login-policy.sh"
+"$BASH" "$SCRIPT_DIR/scripts/install-login-policy.sh"
 
 info "=== deploy-headless.sh complete ==="
