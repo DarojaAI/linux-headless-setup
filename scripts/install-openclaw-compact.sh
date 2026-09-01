@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # install-openclaw-compact.sh — install + enable the openclaw-session-compact
 # systemd timer (compaction-poke every 30 min, threshold 120 min idle by
-# default). Decouples compaction cadence from session-lifetime tuning —
-# opt 1 per the 2026-08-14 design discussion.
+# default) plus the openclaw-healthwatch gateway health probe pair
+# (issue #53, epic #48). Decouples compaction cadence from
+# session-lifetime tuning — opt 1 per the 2026-08-14 design discussion.
 #
 # Why a systemd timer (not cron.d): journald trail, idiomatic on Ubuntu 24+,
 # matches the existing `monitoring.sh` precedent (`node_exporter.service`
@@ -74,14 +75,26 @@ SERVICE_DEST="$UNIT_DIR/openclaw-session-compact.service"
 TIMER_DEST="$UNIT_DIR/openclaw-session-compact.timer"
 WORKER_FILE="$SCRIPT_DIR/compact-openclaw-sessions.sh"
 WORKER_DEST="/usr/local/bin/compact-openclaw-sessions.sh"
+# Healthwatch pair (issue #53, epic #48): SYSTEM units — run as root,
+# probe the gateway's /healthz and restart the USER gateway unit on
+# failure. Installed into /etc/systemd/system (not /etc/systemd/user)
+# because they must survive the user session and run from the root
+# manager's timers.target.
+HEALTHWATCH_UNIT_DIR="/etc/systemd/system"
+HEALTHWATCH_SERVICE_FILE="$SCRIPT_DIR/systemd/openclaw-healthwatch.service"
+HEALTHWATCH_TIMER_FILE="$SCRIPT_DIR/systemd/openclaw-healthwatch.timer"
+HEALTHWATCH_SERVICE_DEST="$HEALTHWATCH_UNIT_DIR/openclaw-healthwatch.service"
+HEALTHWATCH_TIMER_DEST="$HEALTHWATCH_UNIT_DIR/openclaw-healthwatch.timer"
 
 THRESHOLD_MIN="${THRESHOLD_MIN:-120}"
 CADENCE_MIN="${CADENCE_MIN:-30}"
 
 uninstall() {
-  info "Uninstalling openclaw-session-compact timer + service"
+  info "Uninstalling openclaw-session-compact + openclaw-healthwatch units"
   systemctl disable --now openclaw-session-compact.timer 2>/dev/null || true
+  systemctl disable --now openclaw-healthwatch.timer 2>/dev/null || true
   rm -f "$SERVICE_DEST" "$TIMER_DEST" "$WORKER_DEST"
+  rm -f "$HEALTHWATCH_SERVICE_DEST" "$HEALTHWATCH_TIMER_DEST"
   systemctl daemon-reload
   info "Removed"
 }
@@ -116,6 +129,14 @@ install() {
     echo "FATAL: missing worker script: $WORKER_FILE" >&2
     exit 1
   fi
+  if [ ! -f "$HEALTHWATCH_SERVICE_FILE" ]; then
+    echo "FATAL: missing healthwatch service unit template: $HEALTHWATCH_SERVICE_FILE" >&2
+    exit 1
+  fi
+  if [ ! -f "$HEALTHWATCH_TIMER_FILE" ]; then
+    echo "FATAL: missing healthwatch timer unit template: $HEALTHWATCH_TIMER_FILE" >&2
+    exit 1
+  fi
 
   # Substitute the placeholders directly. The prior implementation ran
   # this inside `env -i bash -c '...'` for isolation, but that block
@@ -133,6 +154,9 @@ install() {
   cp "$TIMER_FILE" "$TIMER_DEST"
   chmod 0644 "$SERVICE_DEST" "$TIMER_DEST"
   install -m 0755 "$WORKER_FILE" "$WORKER_DEST"
+  cp "$HEALTHWATCH_SERVICE_FILE" "$HEALTHWATCH_SERVICE_DEST"
+  cp "$HEALTHWATCH_TIMER_FILE" "$HEALTHWATCH_TIMER_DEST"
+  chmod 0644 "$HEALTHWATCH_SERVICE_DEST" "$HEALTHWATCH_TIMER_DEST"
 
   systemctl daemon-reload
   # bash 5.2.x (Ubuntu 24.04) regression: `set -euo pipefail` +
@@ -143,12 +167,16 @@ install() {
   # of this script's idempotency helpers.
   set +e
   systemctl enable --now openclaw-session-compact.timer 2>/dev/null
-  ENABLE_RC=$?
+  set -e
+
+  set +e
+  systemctl enable --now openclaw-healthwatch.timer 2>/dev/null
   set -e
 
   info "Installed openclaw-session-compact timer (threshold=${THRESHOLD_MIN}min, cadence=${CADENCE_MIN}min)"
+  info "Installed openclaw-healthwatch timer (gateway /healthz probe every 30s)"
   info "Schedule:"
-  systemctl list-timers --no-pager openclaw-session-compact.timer || true
+  systemctl list-timers --no-pager openclaw-session-compact.timer openclaw-healthwatch.timer || true
 
   # bash 5.2.x / 5.3.x SIGSEGV class (Ubuntu 24.04): the function-end /
   # script-exit path runs lib.sh's ERR trap cleanup under inherited
