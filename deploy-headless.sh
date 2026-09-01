@@ -80,5 +80,11 @@ fi
 # exit 1, which `set -e` propagates here as a deploy failure. Don't
 # reorder this without re-reading docs/contracts/L2-RUNTIME-CLI.md.
 "$BASH" "$SCRIPT_DIR/scripts/install-runtime-seam-binaries.sh"
+# install-watchdogs.sh installs the L2 VM watchdogs (hourly /tmp +
+# /var/tmp cleanup sweep, 5-min disk usage WARN) as systemd timers and
+# enables them. Pure L2 watchdogs; idempotent re-runs safe. Runs last —
+# after install-runtime-seam-binaries.sh — so the chain ends with the
+# watchdog units active.
+bash "$SCRIPT_DIR/scripts/install-watchdogs.sh"
 
 info "=== deploy-headless.sh complete ==="

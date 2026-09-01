@@ -1,0 +1,9 @@
+[Unit]
+Description=L2 disk usage watchdog (5min cadence, threshold=85%)
+ConditionPathExists=!/var/run/l2-disable-disk-watchdog
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/disk-watchdog.sh
+Environment=DISK_WATCHDOG_THRESHOLD=85
+User=root
