@@ -28,6 +28,19 @@ mkdir -p "$APP_HOME/.ssh"
 chmod 700 "$APP_HOME/.ssh"
 chown "$APP_USER:$APP_USER" "$APP_HOME/.ssh"
 
+# ── git identity (issue #F, ledger) ──
+# Closes the class where deploy scripts that call `git commit` inside
+# the VM fall back to operator name when the agent committer-email is
+# unset (same shape as the linux-desktop-seed bypass / identity-bleed
+# PR-to-PR class that closed via PR #1528 / #1528).
+if [ "$(sudo -u "$APP_USER" git config --global user.email 2>/dev/null || echo)" != "agent@daroja.ai" ]; then
+	info "Setting $APP_USER git identity → agent@daroja.ai"
+	sudo -u "$APP_USER" git config --global user.email "agent@daroja.ai"
+	sudo -u "$APP_USER" git config --global user.name "Migration Agent"
+else
+	info "$APP_USER git identity already set: agent@daroja.ai"
+fi
+
 # ── Copy root's authorized_keys so CI can SSH as desktopuser ──
 # The deploy workflow provides the SSH key as root; we need desktopuser
 # to have the same key so subsequent deploy steps can connect.
