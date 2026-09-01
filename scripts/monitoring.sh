@@ -50,12 +50,23 @@ systemctl restart node_exporter || true
 # ── Logrotate ──
 apt_install logrotate
 
-# ── Journald persistence ──
+# ── Journald persistence + size/rate caps ──
 mkdir -p /var/log/journal
-if ! grep -q "Storage=persistent" /etc/systemd/journald.conf 2>/dev/null; then
-	info "Enabling journald persistent storage..."
-	sed -i 's/^#Storage=.*/Storage=persistent/' /etc/systemd/journald.conf || echo "Storage=persistent" >>/etc/systemd/journald.conf
-	systemctl restart systemd-journald || true
-fi
+info "Installing journald size/rate cap drop-in..."
+mkdir -p /etc/systemd/journald.conf.d
+cat >/etc/systemd/journald.conf.d/99-l2-caps.conf <<'EOF'
+[Journal]
+Storage=persistent
+SystemMaxUse=2G
+SystemKeepFree=500M
+MaxRetentionSec=30day
+RateLimitIntervalSec=10s
+RateLimitBurst=200
+ForwardToSyslog=no
+ForwardToWall=no
+EOF
+chmod 0644 /etc/systemd/journald.conf.d/99-l2-caps.conf
+systemctl restart systemd-journald
+systemctl is-active systemd-journald
 
 info "Monitoring setup complete."
