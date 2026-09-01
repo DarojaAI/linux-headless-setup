@@ -1,0 +1,29 @@
+# openclaw-healthwatch.service — one-shot health probe for the openclaw
+# gateway (issue #53, epic #48). Probes http://127.0.0.1:18789/healthz
+# with a 5s curl timeout; on any failure (HTTP 5xx or TCP-level curl
+# error) it falls back to restarting the gateway's USER unit via
+# `systemctl --user restart openclaw-gateway.service`.
+#
+# Why a VM-layer watchdog: the 2026-08-05 root-user-bus incident, the
+# 2026-08-20 restart-loop-breaker case, and the 2026-08-27
+# exec-capability regression all left the gateway PID alive while
+# /healthz was 5xx or unreachable. The L3 deploy step only pings
+# /healthz on dispatch; this unit catches it within seconds.
+#
+# Dependency direction: Wants= (never PartOf) toward
+# openclaw-session-compact.timer — the watchdog must never cascade a
+# stop/restart to the compaction sibling (AGENTS.md anchor).
+#
+# Runs as root (system unit) so `systemctl --user` can reach the
+# gateway's user manager. The timer (openclaw-healthwatch.timer) owns
+# the cadence; this unit is the probe payload.
+
+[Unit]
+Description=OpenClaw gateway health probe + auto-restart
+Wants=openclaw-session-compact.timer
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl --max-time 5 --fail --silent --show-error http://127.0.0.1:18789/healthz || /usr/bin/systemctl --user restart openclaw-gateway.service
+User=root
+TimeoutStartSec=15
