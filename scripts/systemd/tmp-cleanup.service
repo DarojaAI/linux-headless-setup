@@ -1,0 +1,8 @@
+[Unit]
+Description=L2 hourly /tmp and /var/tmp cleanup sweep
+ConditionPathExists=!/var/run/l2-disable-tmp-cleanup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/tmp-cleanup.sh
+User=root
