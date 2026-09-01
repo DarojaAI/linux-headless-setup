@@ -1,0 +1,28 @@
+# apt-policy-applied.service — one-shot boot-time re-assertion of the L2 apt
+# policy pin. scripts/install-apt-policy.sh runs `apt-mark hold` + drops
+# /etc/apt/apt.conf.d/20-unattended-restrictions at deploy time; this unit
+# guards against drift afterwards (an operator's `apt-mark unhold`, a
+# snapshot restore, or a rebuild that re-runs apt without the pin).
+#
+# Idempotent: holding an already-held package is a no-op (exit 0) and
+# packages absent from this distro are skipped, so the service succeeds
+# on any flavor. Logs go to journald (tag: apt-policy-applied).
+#
+# Reference: DarojaAI/linux-headless-setup epic #48 (L2 apt hardening item).
+
+[Unit]
+Description=Re-assert L2 apt policy pin (held kernel + critical packages)
+Documentation=https://github.com/DarojaAI/linux-headless-setup
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'for p in linux-image-generic linux-headers-generic linux-image-virtual linux-modules-extra-$(uname -r); do apt-mark showhold "$p" 2>/dev/null | grep -qx "$p" || apt-mark hold "$p" >/dev/null 2>&1 || true; done'
+# Detach systemd's stdin/stdout/stderr from any TTY; redirect to journal.
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=multi-user.target
