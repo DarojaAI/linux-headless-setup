@@ -46,6 +46,19 @@ bash "$SCRIPT_DIR/scripts/system.sh"
 bash "$SCRIPT_DIR/scripts/optimize.sh"
 bash "$SCRIPT_DIR/scripts/security.sh"
 bash "$SCRIPT_DIR/scripts/runtimes.sh"
+# bash53.sh provisions /opt/bash-5.3/bin/bash from the GNU release
+# tarball. MUST run AFTER system.sh / optimize.sh / security.sh /
+# runtimes.sh (so build-essential/bison/wget are guaranteed) and BEFORE
+# install-docker.sh and downstream (the install scripts that follow
+# route through /opt/bash-5.3/bin/bash; without that path available
+# here they correctly refuse to run, which is exactly what we want for
+# a regression — fail loud, fail early, with the operator action
+# spelled out).
+# Idempotent: short-circuits if /opt/bash-5.3/bin/bash already exists.
+# Right-layer fix for the bash 5.2 + ERR-trap + nested-bash SIGSEGV
+# class that bites install-openclaw-compact.sh + others on Ubuntu 24.04.
+# Anchors: 2026-08-14-bash-5.2-ERR-trap-sigsegv.md (L3a postmortem).
+bash "$SCRIPT_DIR/scripts/bash53.sh"
 bash "$SCRIPT_DIR/scripts/user.sh"
 # install-docker.sh installs Docker + writes /etc/docker/daemon.json +
 # enables ip_forward via sysctl drop-in. Required for the OpenClaw agent
@@ -54,15 +67,25 @@ bash "$SCRIPT_DIR/scripts/user.sh"
 # BEFORE monitoring.sh (so the docker daemon is up before node_exporter
 # and friends probe it).
 # BUG-CLASS: bash 5.2.21 + lib.sh ERR trap segfaults under `set -euo pipefail`
-# exit 139. Route through /opt/bash-5.3/bin/bash which we built on the VM
-# during the 2026-08-14 SIGSEGV investigation. Falls back to system bash
-# with a warning if /opt/bash-5.3 isn't present (the gate inside
-# install-openclaw-compact.sh itself will abort cleanly if so).
+# exit 139. Route through /opt/bash-5.3/bin/bash which bash53.sh has
+# JUST installed. If bash53.sh failed (or was skipped), /opt/bash-5.3
+# is missing — fail fast here with a clear operator message instead of
+# silently falling through to system bash. Today the install scripts
+# under $BASH have their own bash-version gates, so they'll exit 1 on
+# 5.2 — but the deploy workflow treats that as a generic gate failure
+# that wastes time. Failing here, at the bootstrap boundary, makes the
+# remediation action obvious (re-run deploy-headless.sh, or check
+# bash53.sh output).
 if [ -x /opt/bash-5.3/bin/bash ]; then
   BASH=/opt/bash-5.3/bin/bash
 else
-  warn "/opt/bash-5.3/bin/bash not found, falling back to system bash (compaction install may segfault)"
-  BASH=bash
+  error "FATAL: /opt/bash-5.3/bin/bash missing after bash53.sh — refusing to continue."
+  error "  The downstream install scripts require bash ≥ 5.3 (lib.sh ERR-trap + nested-"
+  error "  bash segfault class). Without /opt/bash-5.3 they will exit non-zero, and the"
+  error "  deploy chain will fail with a generic gate error rather than the actionable"
+  error "  precondition failure. Investigate bash53.sh output above; re-run this orchestrator"
+  error "  once provisioning completes."
+  exit 1
 fi
 "$BASH" "$SCRIPT_DIR/scripts/install-docker.sh"
 "$BASH" "$SCRIPT_DIR/scripts/monitoring.sh"
