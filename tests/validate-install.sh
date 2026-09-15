@@ -42,7 +42,22 @@ check "pip installed" command -v pip3
 # legacy name that returns "Unit not found" on current hosts. Test
 # the actual unit name on Ubuntu 24+ (ssh.service), with sshd.service
 # as a fallback for older hosts that still use the legacy name.
-check "ssh running" bash -c 'systemctl is-active ssh >/dev/null 2>&1 || systemctl is-active sshd >/dev/null 2>&1'
+# ssh.service / sshd.service are socket-activated on the hetzner image
+# (sshd listens via ssh.socket; `systemctl status` shows ActiveState=active,
+# but `systemctl is-active` returns rc=4 from non-interactive SSH probes
+# because `LoadState=disabled` + `TriggeredBy=ssh.socket` defeats the
+# `is-active` short-circuit for socket-activated services on systemd
+# 255+/Ubuntu 24.04). The real-world contract is "sshd accepts TCP
+# connections on :22", not "systemd thinks the unit is enabled". This
+# probe verifies (a) binary, (b) process, and (c) TCP/22 listener.
+check "ssh running" bash -c '
+set -e
+test -x /usr/sbin/sshd || { echo "sshd binary missing" >&2; exit 1; }
+pgrep -xf "/usr/sbin/sshd" >/dev/null || pgrep -xf "sshd: /usr/sbin/sshd" >/dev/null || \
+  { echo "no sshd process" >&2; exit 1; }
+ss -tlnH "sport = :ssh" 2>/dev/null | grep -q LISTEN || \
+  { echo "no :22 listener" >&2; exit 1; }
+'
 check "fail2ban running" systemctl is-active fail2ban
 check "node_exporter running" systemctl is-active node_exporter
 
