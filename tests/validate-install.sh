@@ -53,7 +53,14 @@ check "pip installed" command -v pip3
 check "ssh running" bash -c '
 set -e
 test -x /usr/sbin/sshd || { echo "sshd binary missing" >&2; exit 1; }
-pgrep -xf "/usr/sbin/sshd" >/dev/null || pgrep -xf "sshd: /usr/sbin/sshd" >/dev/null || \
+# `-x` (exact full-line match) is intentionally omitted: the actual
+# sshd process command line is
+#   sshd: /usr/sbin/sshd -D [listener] 0 of 3-10 startups
+# so a strict exact-match against `/usr/sbin/sshd` or
+# `sshd: /usr/sbin/sshd` will always miss the suffix. `-f` matches
+# the pattern anywhere in the full command line, which is what we
+# want here.
+pgrep -f "/usr/sbin/sshd" >/dev/null || \
   { echo "no sshd process" >&2; exit 1; }
 ss -tlnH "sport = :ssh" 2>/dev/null | grep -q LISTEN || \
   { echo "no :22 listener" >&2; exit 1; }
