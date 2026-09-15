@@ -27,8 +27,24 @@ setup() {
   grep -qE 'test -x /usr/sbin/sshd' "$SCRIPT"
 }
 
-@test "validate-install.sh probes sshd process tree via pgrep" {
-  grep -qE 'pgrep -xf' "$SCRIPT"
+@test "validate-install.sh probes sshd process tree via pgrep -f" {
+  # pgrep -f (no -x) matches the pattern anywhere in the full command
+  # line. Required because the actual sshd process runs as
+  #   sshd: /usr/sbin/sshd -D [listener] 0 of 3-10 startups
+  # so a strict exact-match (-x) against /usr/sbin/sshd or any
+  # substring of the prefix always misses. Deploy #34986471330
+  # surfaced the over-strict class: PR #66 shipped `pgrep -xf` and
+  # it failed on the live VM despite sshd running as PID 3665749.
+  grep -qE 'pgrep -f' "$SCRIPT"
+}
+
+@test "validate-install.sh does NOT use 'pgrep -xf' against /usr/sbin/sshd (over-strict match bug)" {
+  # Belt-and-braces: if anyone reverts to `pgrep -xf "/usr/sbin/sshd"`
+  # or `pgrep -xf "sshd: /usr/sbin/sshd"`, the test catches it. The
+  # exact-string cmdline of real sshd has extra argv after the
+  # binary, so `-xf` (exact full-line match) always misses.
+  ! grep -qE 'pgrep -xf "/usr/sbin/sshd"' "$SCRIPT"
+  ! grep -qE 'pgrep -xf "sshd: /usr/sbin/sshd"' "$SCRIPT"
 }
 
 @test "validate-install.sh probes :22 listener via ss" {
