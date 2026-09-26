@@ -55,14 +55,23 @@ setup() {
   sed -n "$((helper_line-5)),$((helper_line+2))p" "$DEPLOY" | grep -q '"$BASH"'
 }
 
-@test "install-runtime-seam-binaries.sh is the LAST gated invocation" {
-  # Belt-and-suspenders for the order invariant. Locate every
-  # `"$BASH" "$SCRIPT_DIR/scripts/*.sh"` invocation line, take the
-  # last, and assert it's install-runtime-seam-binaries.sh.
-  local last_gated_line
-  last_gated_line="$(grep -nE '"\$BASH" "\$SCRIPT_DIR/scripts/.*\.sh"' "$DEPLOY" \
-                     | tail -n 1)"
-  echo "$last_gated_line" | grep -q 'install-runtime-seam-binaries\.sh'
+@test "install-runtime-seam-binaries.sh precedes the deliberate post-runtime calls" {
+  # The original invariant ("runtime-seam is the LAST gated call")
+  # predates install-login-policy.sh and install-apt-policy.sh, both of
+  # which were added AFTER it by design (deploy-headless.sh documents:
+  # "Keep AFTER install-runtime-seam-binaries.sh: nothing after it
+  # depends on apt package state"). The load-bearing invariant is that
+  # runtime-seam runs after openclaw-prep.sh (wire-compat, test 5) and
+  # before the policy calls -- assert exactly that.
+  local seam_line login_line apt_line
+  seam_line="$(grep -nE 'install-runtime-seam-binaries\.sh' "$DEPLOY" | grep '\$BASH' | head -1 | cut -d: -f1)"
+  login_line="$(grep -nE '"\$BASH" "\$SCRIPT_DIR/scripts/install-login-policy\.sh"' "$DEPLOY" | head -1 | cut -d: -f1)"
+  apt_line="$(grep -nE '"\$BASH" "\$SCRIPT_DIR/scripts/install-apt-policy\.sh"' "$DEPLOY" | head -1 | cut -d: -f1)"
+  [ -n "$seam_line" ] || { echo "runtime-seam call not found"; return 1; }
+  [ -n "$login_line" ] || { echo "login-policy call not found"; return 1; }
+  [ -n "$apt_line" ] || { echo "apt-policy call not found"; return 1; }
+  [ "$seam_line" -lt "$login_line" ] || { echo "runtime-seam must precede login-policy"; return 1; }
+  [ "$seam_line" -lt "$apt_line" ] || { echo "runtime-seam must precede apt-policy"; return 1; }
 }
 
 @test "openclaw-prep.sh precedes install-runtime-seam-binaries.sh" {

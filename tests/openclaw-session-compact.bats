@@ -46,9 +46,12 @@ setup() {
   # pattern explicit) and BEFORE openclaw-prep.sh (which depends on the
   # openclaw binary being installed).
   local monitoring_line openclaw_line compact_line
-  monitoring_line=$(grep -nE '^bash .*monitoring\.sh' "$REPO_ROOT/deploy-headless.sh" | head -1 | cut -d: -f1)
-  openclaw_line=$(grep -nE '^bash .*openclaw-prep\.sh' "$REPO_ROOT/deploy-headless.sh" | head -1 | cut -d: -f1)
-  compact_line=$(grep -nE '^bash .*install-openclaw-compact\.sh' "$REPO_ROOT/deploy-headless.sh" | head -1 | cut -d: -f1)
+  # The chain moved from bare `bash scripts/x.sh` to the gated
+  # `"$BASH" "$SCRIPT_DIR/scripts/x.sh"` form (bash-5.3 routing); match
+  # both so the ordering assertions track the real invocations.
+  monitoring_line=$(grep -nE '(^bash |\$BASH.*monitoring)\.sh' "$REPO_ROOT/deploy-headless.sh" | head -1 | cut -d: -f1)
+  openclaw_line=$(grep -nE '(^bash |\$BASH.*openclaw-prep)\.sh' "$REPO_ROOT/deploy-headless.sh" | head -1 | cut -d: -f1)
+  compact_line=$(grep -nE '(^bash |\$BASH.*install-openclaw-compact)\.sh' "$REPO_ROOT/deploy-headless.sh" | head -1 | cut -d: -f1)
   [ -n "$monitoring_line" ] || { echo "monitoring.sh chain entry not found"; return 1; }
   [ -n "$openclaw_line" ] || { echo "openclaw-prep.sh chain entry not found"; return 1; }
   [ -n "$compact_line" ] || { echo "install-openclaw-compact.sh chain entry not found"; return 1; }

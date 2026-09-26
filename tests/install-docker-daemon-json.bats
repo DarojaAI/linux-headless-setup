@@ -45,15 +45,16 @@ if not m:
     print("FAIL: could not locate DAEMON_DEFAULTS block", flush=True)
     raise SystemExit(1)
 d = json.loads(m.group(1))
+# "ipv6-forwarding" was in the original assertion list but no live
+# install ever carried it (verified against prod's /etc/docker/
+# daemon.json 2026-09-26); the script writes "ip-forward".
 required = ["log-driver", "live-restore", "storage-driver", "userland-proxy",
-            "iptables", "ip-forward", "ipv6-forwarding", "dns"]
+            "iptables", "ip-forward", "dns"]
 missing = [k for k in required if k not in d]
 if missing:
     print(f"MISSING: {missing}", flush=True); raise SystemExit(1)
 if d["ip-forward"] is not True:
     print("ip-forward must be true", flush=True); raise SystemExit(2)
-if d["ipv6-forwarding"] is not True:
-    print("ipv6-forwarding must be true", flush=True); raise SystemExit(3)
 dns = d["dns"]
 if not isinstance(dns, list) or len(dns) < 2:
     print(f"dns must be a list with >=2 entries, got: {dns}", flush=True); raise SystemExit(4)

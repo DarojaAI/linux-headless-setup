@@ -27,8 +27,14 @@ setup() {
   grep -qE 'test -x /usr/sbin/sshd' "$SCRIPT"
 }
 
-@test "validate-install.sh probes sshd process tree via pgrep" {
-  grep -qE 'pgrep -xf' "$SCRIPT"
+@test "validate-install.sh probes sshd process tree via pgrep (no exact-match -x)" {
+  # `-x` was deliberately dropped (PR #68 / deploy #34986471330): the
+  # real sshd listener cmdline is
+  #   sshd: /usr/sbin/sshd -D [listener] 0 of 3-10 startups
+  # so exact-full-line matching always missed. pgrep -f (substring)
+  # is the contract; -xf is a regression.
+  grep -qE 'pgrep -f' "$SCRIPT"
+  ! grep -qE 'pgrep -xf' "$SCRIPT"
 }
 
 @test "validate-install.sh probes :22 listener via ss" {

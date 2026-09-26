@@ -2,19 +2,69 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  # On-demand validation without a sacrificial merge (the deploy clones
+  # --branch main; this repo's default branch is `master` from an earlier
+  # era -- see the retirement/alignment PR for that hazard).
+  workflow_dispatch: {}
 
 jobs:
-  pre-commit-validation:
-    name: Pre-Commit Validation
-    runs-on: ubuntu-latest
+  bats:
+    name: BATS (hermetic install-script suite)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
     steps:
-      - name: Echo
-        run: echo "OK"
+      - uses: actions/checkout@v6
+
+      # 2026-09-26: this job used to be two `echo "OK"` placeholders.
+      # The repo carries 18 hermetic BATS suites (validated against live
+      # VM state 2026-09-26: 122 tests) that had NEVER run in CI. Real
+      # suites also caught five stale-test classes on their first run --
+      # the whole point of having them.
+      - name: Install bats + shellcheck + jq
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -yqq bats shellcheck jq
+
+      - name: Run all BATS suites (no skip list)
+        run: |
+          shopt -s nullglob
+          failed=0
+          for t in tests/*.bats; do
+            echo "=== $t ==="
+            if ! timeout 300 bats "$t"; then
+              echo "::error::$t has failures"
+              failed=1
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::BATS suite has regressions."
+            exit 1
+          fi
+
+      - name: Syntax-check all install scripts
+        run: |
+          shopt -s nullglob
+          for s in deploy-headless.sh scripts/*.sh; do
+            bash -n "$s"
+          done
 
   security:
     name: Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - name: Echo
-        run: echo "OK"
+      - uses: actions/checkout@v6
+
+      - name: "shellcheck every script (severity: error)"
+        run: |
+          shopt -s nullglob
+          failed=0
+          for s in deploy-headless.sh scripts/*.sh scripts/maintenance/*.sh; do
+            if ! shellcheck --norc -S error "$s"; then
+              echo "::error::shellcheck findings in $s"
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ]
