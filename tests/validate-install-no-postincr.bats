@@ -98,17 +98,16 @@ setup() {
   ! grep -qE 'node -v . grep -q "\^v22"' "$SCRIPT"
 }
 
-@test "ssh assertion accepts ssh.service OR sshd.service" {
-  # Ubuntu 24+ uses ssh.service; older hosts used sshd.service.
-  # Test the OR fallback via substrings rather than a full-line
-  # regex (the original regex tried to match a single-quoted shell
-  # body, which is brittle to escape in a bats test).
-  grep -qF 'systemctl is-active ssh >/dev/null 2>&1' "$SCRIPT" || {
-    echo "missing ssh.service check"; return 1
-  }
-  grep -qF 'systemctl is-active sshd >/dev/null 2>&1' "$SCRIPT" || {
-    echo "missing sshd.service fallback check"; return 1
-  }
+@test "ssh assertion no longer uses systemctl unit-name probes" {
+  # The unit-name class was removed entirely (validate-install.sh now
+  # contracts on: sshd binary + pgrep process + :22 TCP listener --
+  # see validate-install-ssh.bats). `systemctl is-active ssh` is
+  # broken on socket-activated units (rc=4 via non-interactive SSH on
+  # systemd 255+/Ubuntu 24.04: LoadState=disabled defeats is-active
+  # even while sshd is serving). Guard the removal.
+  if grep -qF 'systemctl is-active ssh' "$SCRIPT"; then
+    echo "unit-name probe reintroduced (use the :22 listener contract)"; return 1
+  fi
 }
 
 @test "node assertion grep regex accepts v20-v99" {
