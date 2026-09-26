@@ -4,7 +4,7 @@
 # tests/validate-install.sh (the runtime smoke test).
 #
 # Asserts that every Node major declared in runtimes.sh is
-# accepted by the regex in validate-install.sh.
+# accepted by the version regex in validate-install.sh.
 #
 # Adding a new Node pin in runtimes.sh without widening the
 # regex in validate-install.sh silently breaks the validation,
@@ -12,6 +12,14 @@
 # in PR #6, and validate-install.sh's "^v22" check failed the
 # integration test for 24.x VMs. This test makes the next pin
 # bump a single-file change.
+#
+# Ported 2026-09-26 from master (PR #8) during the master/main
+# alignment. The original extracted literal majors (22, 24) from
+# the check's regex; main's check evolved to a character-class
+# range (^v(2[0-9]|[3-9][0-9]) = v20-v99, "node present and
+# LTS-class"), which literal parsing cannot read. This version
+# extracts the regex and evaluates it semantically — works for
+# exact-major, grouped-alternative, and character-class shapes.
 #
 # Exits 0 on pass, 1 on fail.
 
@@ -22,89 +30,65 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNTIMES_SH="$REPO_ROOT/scripts/runtimes.sh"
 VALIDATE_SH="$REPO_ROOT/tests/validate-install.sh"
 
-# Resolve bash explicitly so the regex inside doesn't expand.
+# Pull NODE_MAJOR_REQUIRED=N (comma-separated lists also accepted)
+# and emit one major per line.
 extract_required_majors() {
-    # Pull `NODE_MAJOR_REQUIRED=N` lines and emit N. Comma-separated
-    # lists (e.g., NODE_MAJOR_REQUIRED=22,24) are also accepted by
-    # splitting on `,` after the `=`.
     awk -F= '
-        /^[[:space:]]*NODE_MAJOR_REQUIRED[[:space:]]*=/ {
-            v = $2
-            n = split(v, parts, ",")
+        /^ *NODE_MAJOR_REQUIRED=/ {
+            n = split($2, parts, ",")
             for (i = 1; i <= n; i++) {
-                gsub(/[[:space:]]/, "", parts[i])
                 if (parts[i] ~ /^[0-9]+$/) print parts[i]
             }
         }
     ' "$RUNTIMES_SH" | sort -u
 }
 
-# Match two flavors of the `node installed` check in validate-install.sh:
-#   - simple:  ^v22     (single line + single major, the original form)
-#   - grouped: ^v(22\.|24\.|...)   (extended form, comma-joined majors)
-# Returns one accepted major per match, deduped.
-extract_accepted_majors() {
-    awk '
-        /node installed/ {
-            line = $0
-            n = split(line, parts, "\"")
-            for (i = 1; i <= n; i++) {
-                p = parts[i]
-                # Grouped form: ^v(22\.|24\.|...)
-                if (match(p, /\^v\(/)) {
-                    inside = substr(p, RSTART + 3)
-                    e = index(inside, ")")
-                    if (e > 0) {
-                        inside = substr(inside, 1, e - 1)
-                        m = split(inside, alts, "|")
-                        for (j = 1; j <= m; j++) {
-                            gsub(/[\\. ]/, "", alts[j])
-                            if (alts[j] ~ /^[0-9]+$/) print alts[j]
-                        }
-                    }
-                }
-                # Simple form: ^v22 or ^v22\.
-                if (match(p, /\^v[0-9]+/)) {
-                    gsub(/\^v/, "", p)
-                    sub(/\..*/, "", p)
-                    if (p ~ /^[0-9]+$/) print p
-                }
-            }
-        }
-    ' "$VALIDATE_SH" | sort -u
+# Extract the node-version regex from validate-install.sh's
+# "node installed" check line: the `grep -qE "<regex>"` payload.
+extract_node_regex() {
+    grep -m1 'node installed' "$VALIDATE_SH" \
+        | sed -n 's/.*grep -qE "\(\^v[^"]*\)".*/\1/p'
+}
+
+# Is <major> accepted by the extracted regex? Evaluate it against
+# a representative version string.
+major_accepted() {
+    local major="$1" regex
+    regex="$(extract_node_regex)"
+    [ -n "$regex" ] || return 2
+    printf 'v%s.0.0\n' "$major" | grep -qE "$regex"
 }
 
 required="$(extract_required_majors)"
-accepted="$(extract_accepted_majors)"
-
 if [ -z "$required" ]; then
     echo "FAIL: $RUNTIMES_SH has no NODE_MAJOR_REQUIRED assignment" >&2
     exit 1
 fi
-if [ -z "$accepted" ]; then
+
+regex="$(extract_node_regex)"
+if [ -z "$regex" ]; then
     echo "FAIL: $VALIDATE_SH has no node version check" >&2
     exit 1
 fi
 
 echo "scripts/runtimes.sh  declares: $(printf '%s ' $required)"
-echo "tests/validate-install.sh accepts: $(printf '%s ' $accepted)"
-echo
+echo "tests/validate-install.sh accepts: ${regex}"
 
-fail=0
+failed=0
 for major in $required; do
-    if printf '%s\n' "$accepted" | grep -qx "$major"; then
-        echo "  OK    major $major is pinned by runtimes.sh and accepted by validate-install.sh"
+    if major_accepted "$major"; then
+        echo "OK: v${major}.x satisfies the check"
     else
-        echo "  MISS  major $major is pinned by runtimes.sh but NOT accepted by validate-install.sh"
-        fail=1
+        echo "FAIL: v${major}.x is NOT accepted by the check" >&2
+        failed=1
     fi
 done
 
-echo
-if [ "$fail" -eq 0 ]; then
-    echo "PASS: every runtimes.sh Node pin is accepted by validate-install.sh"
-    exit 0
+if [ "$failed" -ne 0 ]; then
+    echo "" >&2
+    echo "Coupling drift: widen the regex in tests/validate-install.sh" >&2
+    echo "(or the check) to cover the pinned major." >&2
+    exit 1
 fi
-echo "FAIL: mismatch between runtimes.sh and validate-install.sh. Widen the regex in"
-echo "      tests/validate-install.sh to include the missed major(s) above."
-exit 1
+
+echo "Coupling OK."
