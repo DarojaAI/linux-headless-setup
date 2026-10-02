@@ -49,12 +49,18 @@ info "git ${GIT_VERSION} not found — building from $GIT_TARBALL_URL"
 # ── Toolchain (idempotent; build-essential already installed by system.sh
 # on most VMs, but spelled out here so a fresh image without L2's package
 # set doesn't break). ──
+# Cargo is required for git 2.49+ because libgitcore (Rust bindings used
+# by `make all`) links a Rust static lib. Without it, `make` fails with
+# `cargo: not found` / Error 127 — observed in head deploy 37075271395.
+# apt_install is idempotent so re-runs are no-ops; the rustc dependency
+# is pulled in by the cargo apt package on noble.
 apt_install build-essential
 apt_install libcurl4-openssl-dev
 apt_install libssl-dev
 apt_install libexpat1-dev
 apt_install gettext
 apt_install zlib1g-dev
+apt_install cargo
 apt_install wget
 
 WORK=$(mktemp -d)
