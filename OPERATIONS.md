@@ -77,5 +77,27 @@ If they agree, `HEAD` is re-attached. If not, repeat or escalate.
 
 ---
 
+## L2 hardening baseline — closure index (2026-10-02)
+
+Epic [#48](https://github.com/DarojaAI/linux-headless-setup/issues/48)
+shipped across PRs #55–#60 on 2026-09-01, plus the SSH follow-on (PR #72,
+2026-10-02). All open children are closed in
+[#1848](https://github.com/DarojaAI/linux-headless-setup/pull/1848) — this
+section exists so future readers can trace each hardening change back to
+its shipping PR without grepping git log.
+
+| Issue | Title | Shipped in | Notes |
+| --- | --- | --- | --- |
+| #49 | chrony + NTPSynchronized gate | [PR #55](https://github.com/DarojaAI/linux-headless-setup/pull/55) | `scripts/system.sh` |
+| #50 | journald size/rate caps | [PR #56](https://github.com/DarojaAI/linux-headless-setup/pull/56) | `/etc/systemd/journald.conf.d/99-l2-caps.conf` |
+| #51 | net.ipv4 sysctl drop-in | [PR #57](https://github.com/DarojaAI/linux-headless-setup/pull/57) | `/etc/sysctl.d/99-l2-hardening.conf` |
+| #52 | SSH MaxAuthTries / MaxStartups / ClientAlive drop-in | [PR #58](https://github.com/DarojaAI/linux-headless-setup/pull/58) + [PR #72](https://github.com/DarojaAI/linux-headless-setup/pull/72) | PR #72 reversed MaxAuthTries=3 so CI runners with multiple keys reach the right key |
+| #53 | openclaw-healthwatch.{service,timer} | [PR #59](https://github.com/DarojaAI/linux-headless-setup/pull/59) | Auto-restart gateway on `/healthz` failure |
+| #54 | vim-tiny + bash-completion + man-db + less | [PR #60](https://github.com/DarojaAI/linux-headless-setup/pull/60) | `scripts/system.sh` |
+
+If you need to audit any of these, the L2 epic and its children are
+still searchable in the issue tracker; the working tree has not changed
+between this index and the shipping PRs.
+
 End runbook. Operate sparingly — every repo-admin op should land in a
 ticket or issue before being performed.
