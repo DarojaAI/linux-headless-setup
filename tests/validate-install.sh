@@ -23,6 +23,11 @@ echo "=== Headless Install Validation ==="
 check "ssh installed" bash -c 'test -f /usr/sbin/sshd'
 check "curl installed" command -v curl
 check "git installed" command -v git
+# git-pin.sh provisions /opt/git-2.56.0/bin/git from the kernel.org tarball and
+# shadows the distro git via /usr/local/bin symlinks. Assert the pinned
+# version (a future bump must widen this regex — same coupling rule as
+# check-pinned-runtime-versions.sh).
+check "git pinned to 2.56.x" bash -c 'git --version | grep -qE "git version 2\.56\."'
 check "jq installed" command -v jq
 # L2 runtimes.sh installs Node via NodeSource (setup_22.x) on the host
 # when missing OR when the major version is not 22. On Ubuntu 24.04
