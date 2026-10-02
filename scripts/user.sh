@@ -41,17 +41,32 @@ else
 	info "$APP_USER git identity already set: agent@daroja.ai"
 fi
 
-# ── Copy root's authorized_keys so CI can SSH as desktopuser ──
-# The deploy workflow provides the SSH key as root; we need desktopuser
-# to have the same key so subsequent deploy steps can connect.
+# ── Merge root's authorized_keys into desktopuser (converging) ──
+# The deploy workflow provides the SSH key as root; desktopuser must trust
+# the same keys so subsequent deploy steps can connect. Converging merge
+# (append-only, idempotent): previously this was copy-if-absent, which
+# silently skipped once the file existed — so a stale/partial
+# authorized_keys (e.g. a VM provisioned before the runner key was added)
+# never received the runner key, and every desktopuser SSH failed auth
+# (deploy runs 36969776882..37042071059). Now root keys are merged into
+# desktopuser's authorized_keys on every L2 provision.
 if [ -f /root/.ssh/authorized_keys ]; then
-	if [ ! -f "$APP_HOME/.ssh/authorized_keys" ]; then
-		info "Copying root authorized_keys to $APP_USER"
-		cp /root/.ssh/authorized_keys "$APP_HOME/.ssh/authorized_keys"
-		chmod 600 "$APP_HOME/.ssh/authorized_keys"
-		chown "$APP_USER:$APP_USER" "$APP_HOME/.ssh/authorized_keys"
+	install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$APP_HOME/.ssh"
+	[ -f "$APP_HOME/.ssh/authorized_keys" ] || install -m 600 -o "$APP_USER" -g "$APP_USER" /dev/null "$APP_HOME/.ssh/authorized_keys"
+	chmod 600 "$APP_HOME/.ssh/authorized_keys"
+	chown "$APP_USER:$APP_USER" "$APP_HOME/.ssh/authorized_keys"
+	added=0
+	while IFS= read -r key_line || [ -n "$key_line" ]; do
+		[ -z "$key_line" ] && continue
+		if ! grep -qF -- "$key_line" "$APP_HOME/.ssh/authorized_keys"; then
+			printf '%s\n' "$key_line" >> "$APP_HOME/.ssh/authorized_keys"
+			added=$((added + 1))
+		fi
+	done < /root/.ssh/authorized_keys
+	if [ "$added" -gt 0 ]; then
+		info "Merged ${added} key line(s) from root into $APP_USER authorized_keys"
 	else
-		info "$APP_USER already has authorized_keys"
+		info "$APP_USER authorized_keys up to date (no new keys from root)"
 	fi
 else
 	warn "No /root/.ssh/authorized_keys found — desktopuser may not be reachable via SSH"
