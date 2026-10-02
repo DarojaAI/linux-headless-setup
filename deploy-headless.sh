@@ -59,6 +59,17 @@ bash "$SCRIPT_DIR/scripts/runtimes.sh"
 # class that bites install-openclaw-compact.sh + others on Ubuntu 24.04.
 # Anchors: 2026-08-14-bash-5.2-ERR-trap-sigsegv.md (L3a postmortem).
 bash "$SCRIPT_DIR/scripts/bash53.sh"
+# git-pin.sh provisions /opt/git-2.56.0/bin/git from the kernel.org
+# release tarball, pinned to the latest stable git (2.56.0). MUST run
+# AFTER bash53.sh (build toolchain guaranteed: build-essential +
+# libcurl4-openssl-dev + libssl-dev + libexpat1-dev + gettext +
+# zlib1g-dev + wget) and BEFORE user.sh (so git identity config and
+# any later git invocation in the chain see the pinned binary, not
+# Ubuntu's floating 2.43.x from the noble archive). Same build-from-
+# source rationale as bash53.sh: no PPA trust boundary, reproducible
+# across Hetzner / GitHub-runner / dev-VM images.
+# Idempotent: short-circuits if /opt/git-2.56.0/bin/git already exists.
+bash "$SCRIPT_DIR/scripts/git-pin.sh"
 bash "$SCRIPT_DIR/scripts/user.sh"
 # install-docker.sh installs Docker + writes /etc/docker/daemon.json +
 # enables ip_forward via sysctl drop-in. Required for the OpenClaw agent
