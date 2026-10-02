@@ -42,16 +42,24 @@ if not m:
 	raise SystemExit(1)
 body = [line.strip() for line in m.group(1).splitlines() if line.strip() and not line.startswith("#")]
 required = [
-	"MaxAuthTries 3",
 	"LoginGraceTime 30",
 	"MaxStartups 3:50:10",
 	"ClientAliveInterval 60",
 	"ClientAliveCountMax 3",
 ]
+# MaxAuthTries is intentionally NOT overridden — distro default (6) is
+# required so CI runners with multiple keys in `ssh-add` reach the right
+# key before the auth window closes. See scripts/security.sh comment.
 missing = [k for k in required if k not in body]
 if missing:
 	print(f"MISSING: {missing}", flush=True); raise SystemExit(1)
-print(f"OK: {len(required)} SSH hardening settings present in heredoc")
+# Belt-and-suspenders: if a future edit re-introduces MaxAuthTries here,
+# fail loud rather than silently regressing the SSH wedge fix.
+forbidden = ["MaxAuthTries "]
+present_forbidden = [k for k in forbidden if any(line.startswith(k) for line in body)]
+if present_forbidden:
+	print(f"FORBIDDEN (re-introduced after deploy wedge fix): {present_forbidden}", flush=True); raise SystemExit(2)
+print(f"OK: {len(required)} SSH hardening settings present in heredoc; MaxAuthTries correctly absent")
 PYEOF
 	[ "$status" -eq 0 ]
 }
