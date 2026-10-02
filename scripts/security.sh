@@ -84,12 +84,13 @@ if [ -f /etc/ssh/sshd_config ]; then
 	fi
 
 	# ── L2 SSH hardening drop-in (issue #52,, epic #48) ──
-	# Tightens distro defaults (LoginGraceTime 120→30,,
-	# MaxStartups 10:30:100→3:50:10) and adds keepalives so half-closed
-	# TCP sockets are reclaimed. MaxAuthTries is left at distro default (6)
-	# because CI deploy runners (e.g. GitHub Actions) commonly carry several
-	# keys in `ssh-add`; a low MaxAuthTries value kills the auth attempt
-	# before the correct key is offered. MUST NOT touch PermitRootLogin,,
+	# Tightens distro defaults (MaxStartups 10:30:100→3:50:10) and adds
+	# keepalives so half-closed TCP sockets are reclaimed. MaxAuthTries and
+	# LoginGraceTime are left at distro defaults (6 and 120): CI deploy runners
+	# (e.g. GitHub Actions) commonly carry several keys in `ssh-add` and make
+	# fresh connections after restarts — a low MaxAuthTries kills the auth
+	# attempt before the correct key is offered, and a short LoginGraceTime
+	# closes a slow post-restart auth. MUST NOT touch PermitRootLogin,,
 	# PubkeyAuthentication, or PasswordAuthentication — those are upstream-set
 	# by Hetzner cloud-init.
 	info "Applying L2 SSH hardening drop-in..."
@@ -99,7 +100,7 @@ if [ -f /etc/ssh/sshd_config ]; then
 	# the drop-in still gets written and verified by reading the file directly.
 	SSHD_BIN="$(command -v sshd || true)"
 	if [ -n "$SSHD_BIN" ]; then
-		ssh_before="$("$SSHD_BIN" -T 2>&1 | grep -E '^(maxauthtries|logingracetime|maxstartups|clientaliveinterval|clientalivecountmax) ' || true)"
+		ssh_before="$("$SSHD_BIN" -T 2>&1 | grep -E '^(maxstartups|clientaliveinterval|clientalivecountmax) ' || true)"
 	else
 		ssh_before=""
 	fi
@@ -107,7 +108,6 @@ if [ -f /etc/ssh/sshd_config ]; then
 	install -d -m 0755 /etc/ssh/sshd_config.d
 	install -m 0644 /dev/stdin /etc/ssh/sshd_config.d/10-l2.conf <<'EOF'
 # L2 SSH hardening — applied each deploy.
-LoginGraceTime 30
 MaxStartups 3:50:10
 ClientAliveInterval 60
 ClientAliveCountMax 3
@@ -116,12 +116,12 @@ EOF
 		systemctl reload "$SSHD_SERVICE" || true
 	fi
 	if [ -n "$SSHD_BIN" ]; then
-		ssh_after="$("$SSHD_BIN" -T 2>&1 | grep -E '^(maxauthtries|logingracetime|maxstartups|clientaliveinterval|clientalivecountmax) ' || true)"
+		ssh_after="$("$SSHD_BIN" -T 2>&1 | grep -E '^(maxstartups|clientaliveinterval|clientalivecountmax) ' || true)"
 	else
 		# No sshd binary; verify by reading the file we just wrote.
-		ssh_after="$(grep -E '^(MaxAuthTries|LoginGraceTime|MaxStartups|ClientAliveInterval|ClientAliveCountMax) ' /etc/ssh/sshd_config.d/10-l2.conf | tr 'A-Z' 'a-z' | tr -d ' ' | sort)"
+		ssh_after="$(grep -E '^(MaxStartups|ClientAliveInterval|ClientAliveCountMax) ' /etc/ssh/sshd_config.d/10-l2.conf | tr 'A-Z' 'a-z' | tr -d ' ' | sort)"
 	fi
-	for expected in "logingracetime 30" "maxstartups 3:50:10" "clientaliveinterval 60" "clientalivecountmax 3"; do
+	for expected in "maxstartups 3:50:10" "clientaliveinterval 60" "clientalivecountmax 3"; do
 		if ! grep -qE "^${expected}$" <<<"$ssh_after"; then
 			error "L2 SSH drop-in not applied (effective config: $(echo "$ssh_after" | tr '\n' '; '))"
 			exit 1
