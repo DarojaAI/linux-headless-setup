@@ -31,7 +31,10 @@ setup() {
     # Re-deploys must not blindly re-assert the identity: the email line
     # must sit inside an `if` that only sets it when it differs, and the
     # else branch must be a quiet "already set" info.
-    grep -qF 'if [ "$(sudo -u "$APP_USER" git config --global user.email 2>/dev/null || echo)" != "agent@daroja.ai" ]; then' "$USER_SCRIPT"
+    # Pattern: matches both the original (no env-sanitize prefix) and the
+    # post-#78 variant that prefixes `env -u GIT_DIR -u GIT_WORK_TREE -u
+    # GIT_INDEX_FILE` for the head-deploy fix (PR #78, deploy 37077954285).
+    grep -qE '^if \[ "\$\(sudo -u "\$APP_USER"( env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE)? git config --global user\.email 2>/dev/null \|\| echo\)" != "agent@daroja\.ai" \]; then$' "$USER_SCRIPT"
     grep -qF 'git identity already set' "$USER_SCRIPT"
 }
 
