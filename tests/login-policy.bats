@@ -23,8 +23,10 @@ setup() {
 
 @test "user.sh sets the agent git identity email" {
     # The committer-email line must pin the agent identity so in-VM `git
-    # commit` never falls back to the operator name.
-    grep -qF 'git config --global user.email "agent@daroja.ai"' "$USER_SCRIPT"
+    # commit` never falls back to the operator name. Accept both double
+    # quotes (pre-#79) and single quotes (post-#79 wraps the sudo'd git
+    # call in bash -c "..." which requires single quotes inside).
+    grep -qE 'git config --global user\.email ("|'"'"')agent@daroja\.ai("|'"'"')' "$USER_SCRIPT"
 }
 
 @test "user.sh git identity is wrapped in an idempotent guard" {
