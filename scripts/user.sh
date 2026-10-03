@@ -33,16 +33,24 @@ chown "$APP_USER:$APP_USER" "$APP_HOME/.ssh"
 # the VM fall back to operator name when the agent committer-email is
 # unset (same shape as the linux-desktop-seed bypass / identity-bleed
 # PR-to-PR class that closed via PR #1528 / #1528).
-# Sanitize git env vars (GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE) before
-# the sudo call: the parent L2 process inherits them from /root where the
-# deploy script runs, and `git config --global` honors GIT_DIR and tries
-# to read it as a repo — failing with `fatal: error reading '/root/.git'`
-# when the sudo'd user lacks read perms on /root (observed in head
-# deploy 37077954285).
-if [ "$(sudo -u "$APP_USER" env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git config --global user.email 2>/dev/null || echo)" != "agent@daroja.ai" ]; then
+# cd into $APP_HOME before the sudo'd `git config --global` call: the
+# parent L2 process runs as root with cwd=/root, and sudo inherits cwd.
+# git 2.45+ walks cwd looking for `.git`; on /root (mode 0700) the
+# sudo'd user gets EACCES, which the pinned git 2.56.0 (PR #76, source
+# build at /opt/git-2.56.0) treats as fatal "error reading '/root/.git'".
+# The distro git 2.43.0 recovers by walking up to /, but 2.56.0 does not
+# (observed in head deploy 37077954285). cd-ing to $APP_HOME places the
+# probe under a directory desktopuser can traverse, so .git simply
+# reports ENOENT and git continues.
+#
+# Supersedes the env-strip attempt in PR #78 — that fix addressed a
+# hypothesized env-var leak that wasn't actually present (strace on the
+# failing call shows no GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE in env).
+# The real cause was cwd inheritance, not env inheritance.
+if [ "$(sudo -u "$APP_USER" bash -c "cd '$APP_HOME' && git config --global user.email 2>/dev/null || echo")" != "agent@daroja.ai" ]; then
 	info "Setting $APP_USER git identity → agent@daroja.ai"
-	sudo -u "$APP_USER" env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git config --global user.email "agent@daroja.ai"
-	sudo -u "$APP_USER" env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git config --global user.name "Migration Agent"
+	sudo -u "$APP_USER" bash -c "cd '$APP_HOME' && git config --global user.email 'agent@daroja.ai'"
+	sudo -u "$APP_USER" bash -c "cd '$APP_HOME' && git config --global user.name 'Migration Agent'"
 else
 	info "$APP_USER git identity already set: agent@daroja.ai"
 fi

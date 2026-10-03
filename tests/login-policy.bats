@@ -31,10 +31,16 @@ setup() {
     # Re-deploys must not blindly re-assert the identity: the email line
     # must sit inside an `if` that only sets it when it differs, and the
     # else branch must be a quiet "already set" info.
-    # Pattern: matches both the original (no env-sanitize prefix) and the
-    # post-#78 variant that prefixes `env -u GIT_DIR -u GIT_WORK_TREE -u
-    # GIT_INDEX_FILE` for the head-deploy fix (PR #78, deploy 37077954285).
-    grep -qE '^if \[ "\$\(sudo -u "\$APP_USER"( env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE)? git config --global user\.email 2>/dev/null \|\| echo\)" != "agent@daroja\.ai" \]; then$' "$USER_SCRIPT"
+    #
+    # Post-#79 the sudo'd git call is wrapped in `bash -c "cd '$APP_HOME'
+    # && ..."` so git's cwd-probe (.git discovery) sees a directory
+    # desktopuser can traverse. The probe fails for cwd=/root (mode 0700,
+    # owned by root) because sudo inherits cwd, and the pinned git 2.56.0
+    # (PR #76 source build) treats EACCES on /root/.git as fatal.
+    # Distro git 2.43.0 walks up to / and recovers; 2.56.0 does not
+    # (observed in head deploy 37077954285).
+    grep -qF 'bash -c "cd '\''$APP_HOME'\'' && git config --global user.email' "$USER_SCRIPT"
+    grep -qF '"agent@daroja.ai"' "$USER_SCRIPT"
     grep -qF 'git identity already set' "$USER_SCRIPT"
 }
 
