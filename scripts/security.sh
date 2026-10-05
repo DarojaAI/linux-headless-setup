@@ -106,12 +106,19 @@ if [ -f /etc/ssh/sshd_config ]; then
 	fi
 	info "L2 SSH hardening effective values before drop-in: $(echo "$ssh_before" | tr '\n' '; ')"
 	install -d -m 0755 /etc/ssh/sshd_config.d
-	install -m 0644 /dev/stdin /etc/ssh/sshd_config.d/10-l2.conf <<'EOF'
+	# Pattern: plain `cat >` heredoc, not `install(1)` from /dev/stdin —
+	# coreutils >= 9.4 (Ubuntu 24.04) rejects /dev/stdin sources that
+	# resolve to a pipe, and re-runs over an existing drop-in fail with
+	# `install: No such file or directory` (test deploy 37321450441,
+	# 2026-10-05). umask 022 gives 0644; explicit chmod documents intent.
+	umask 022
+	cat > /etc/ssh/sshd_config.d/10-l2.conf <<'EOF'
 # L2 SSH hardening — applied each deploy.
 MaxStartups 3:50:10
 ClientAliveInterval 60
 ClientAliveCountMax 3
 EOF
+	chmod 0644 /etc/ssh/sshd_config.d/10-l2.conf
 	if [ -n "$SSHD_SERVICE" ]; then
 		systemctl reload "$SSHD_SERVICE" || true
 	fi
