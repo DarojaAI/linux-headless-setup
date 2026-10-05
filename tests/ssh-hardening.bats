@@ -35,7 +35,7 @@ setup() {
 import re, sys
 with open("$SCRIPT", encoding="utf-8") as f:
 	raw = f.read()
-m = re.search(r"install -m 0644 /dev/stdin /etc/ssh/sshd_config\.d/10-l2\.conf <<'EOF'\n(.*?)\nEOF", raw, re.DOTALL)
+m = re.search(r"(?:cat > )?/etc/ssh/sshd_config\.d/10-l2\.conf <<'EOF'\n(.*?)\nEOF", raw, re.DOTALL)
 
 if not m:
 	print("FAIL: could not locate the 10-l2.conf heredoc", flush=True)
@@ -87,4 +87,37 @@ if re.search(r"(?m)^[ \t]*(PermitRootLogin|PasswordAuthentication)\b", raw):
 print("OK: no new PermitRootLogin / PasswordAuthentication assignments")
 PYEOF
 	[ "$status" -eq 0 ]
+}
+# -- Second-run idempotency (deploy 37321450441, 2026-10-05) -------------
+# L2 re-runs on live VMs every deploy. The drop-in write must succeed when
+# the target file ALREADY EXISTS (the first run created it). The old
+# `install(1)` from /dev/stdin pattern failed only on the second run on
+# Ubuntu 24.04 (coreutils 9.4): `install: No such file or directory`.
+
+@test "drop-in write pattern is re-run safe (cat heredoc, not /dev/stdin install)" {
+	# security.sh must write the drop-in with a plain `cat >` heredoc —
+	# overwriting an existing drop-in must be an ordinary truncating write,
+	# not an install(1) from /dev/stdin (coreutils >= 9.4 rejects pipe
+	# sources on re-runs).
+	run grep -n 'install -m 0644 /dev/stdin .*10-l2.conf' "$SCRIPT"
+	[ "$status" -eq 1 ]
+}
+
+@test "drop-in heredoc pattern overwrites an existing file twice without error" {
+	dir="$(mktemp -d)"
+	printf 'MaxStartups 3:50:10\n' > "${dir}/10-l2.conf"
+	for run in 1 2; do
+		umask 022
+		cat > "${dir}/10-l2.conf" <<'EOF'
+# L2 SSH hardening — applied each deploy.
+MaxStartups 3:50:10
+ClientAliveInterval 60
+ClientAliveCountMax 3
+EOF
+		chmod 0644 "${dir}/10-l2.conf"
+	done
+	run grep -c '^MaxStartups 3:50:10$' "${dir}/10-l2.conf"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "1" ]]
+	rm -rf "$dir"
 }
