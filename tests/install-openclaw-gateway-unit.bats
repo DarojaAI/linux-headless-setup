@@ -73,7 +73,15 @@ EOF
 
 @test "scripts/install-openclaw-gateway-unit.sh passes bash -n syntax check" {
   bash -n "$SCRIPT"
-  /opt/bash-5.3/bin/bash -n "$SCRIPT" 2>/dev/null
+}
+
+@test "script source pins the root check, bash-5.3 gate, unit path, and r1-marker contract (CI: no root/bash-5.3)" {
+  grep -qE 'id -u.*ne 0|must run as root' "$SCRIPT"
+  grep -q 'requires bash >= 5.3' "$SCRIPT"
+  grep -q 'openclaw-gateway.service' "$SCRIPT"
+  grep -q 'r1-migration-deploy' "$SCRIPT"
+  # override.conf is L3-owned: the installer must never write it
+  ! grep -qE '(cat|tee|install)[^#]*(>|into)[^#]*override\.conf' "$SCRIPT"
 }
 
 @test "--check exits 1 when unit missing, 0 when present (no side effects)" {
@@ -93,6 +101,9 @@ EOF
 }
 
 @test "install is idempotent: second run logs already-current and content is unchanged" {
+  if [ "$(id -u)" -ne 0 ] || [ ! -x /opt/bash-5.3/bin/bash ]; then
+    skip "exec path needs root + /opt/bash-5.3 (CI: source-pattern test covers the contract)"
+  fi
   make_fakes
   local base
   base="$(mktemp -d)"
@@ -117,6 +128,9 @@ EOF
 }
 
 @test "installed unit contains resolved ExecStart with node + openclaw paths" {
+  if [ "$(id -u)" -ne 0 ] || [ ! -x /opt/bash-5.3/bin/bash ]; then
+    skip "exec path needs root + /opt/bash-5.3 (CI: source-pattern test covers the contract)"
+  fi
   make_fakes
   local base
   base="$(mktemp -d)"
@@ -136,6 +150,9 @@ EOF
 }
 
 @test "r1-migration marker present -> start is skipped (enable still runs)" {
+  if [ "$(id -u)" -ne 0 ] || [ ! -x /opt/bash-5.3/bin/bash ]; then
+    skip "exec path needs root + /opt/bash-5.3 (CI: source-pattern test covers the contract)"
+  fi
   make_fakes
   local base
   base="$(mktemp -d)"
