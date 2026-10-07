@@ -133,4 +133,15 @@ bash "$SCRIPT_DIR/scripts/install-watchdogs.sh"
 echo "→ install-apt-policy.sh"
 "$BASH" "$SCRIPT_DIR/scripts/install-apt-policy.sh"
 
+# install-openclaw-gateway-unit.sh installs + enables the OpenClaw gateway
+# USER unit (openclaw-gateway.service) into ~APP_USER/.config/systemd/user/.
+# Fix B (L2-owned install) for the head-gateway unit-void class: a rollback
+# sweep can strip the unit with nothing reinstalling it. Runs last — after
+# install-apt-policy.sh — so the gateway unit is present + active when the
+# deploy chain completes. Same bash-5.3 routing as the other gated calls;
+# the L3 deploy chain owns any .service.d/override.conf and the unit start
+# when /tmp/r1-migration-deploy is present.
+echo "→ install-openclaw-gateway-unit.sh"
+"$BASH" "$SCRIPT_DIR/scripts/install-openclaw-gateway-unit.sh"
+
 info "=== deploy-headless.sh complete ==="
