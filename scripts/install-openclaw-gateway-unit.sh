@@ -80,7 +80,10 @@ ExecStart=$NODE_PATH $OPENCLAW_PATH gateway --port 18789
 Restart=always
 RestartSec=5
 RestartPreventExitStatus=78
-TimeoutStopSec=30
+# 330s: openclaw doctor requires an effective stop timeout >= 330s for its
+# drain; the old 30s made doctor abort maintenance with
+# "330s or longer is required" (head h45 37696901436 step 41).
+TimeoutStopSec=330
 TimeoutStartSec=30
 SuccessExitStatus=0 143
 KillMode=control-group
