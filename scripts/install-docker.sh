@@ -69,19 +69,9 @@ if [ ! -f "$DAEMON_JSON" ]; then
 	printf '%s\n' "$DAEMON_DEFAULTS" > "$DAEMON_JSON"
 else
 	info "$DAEMON_JSON already exists; merging missing keys from defaults"
-	# python3 -c merge: take existing file as base, overlay defaults on top
+	# lib-merge-daemon-json.py merge: take existing file as base, overlay defaults on top
 	# (defaults only add keys that don't exist; do NOT overwrite operator customizations).
-	if ! MERGED=$(python3 -c '
-import json, sys
-with open("'"$DAEMON_JSON"'") as f:
-    base = json.load(f)
-with open("/dev/stdin") as f:
-    defaults = json.load(f)
-for k, v in defaults.items():
-    if k not in base:
-        base[k] = v
-print(json.dumps(base, indent=2))
-' <<<"$DAEMON_DEFAULTS" 2>/dev/null); then
+	if ! MERGED=$(python3 "$SCRIPT_DIR/lib-merge-daemon-json.py" "$DAEMON_JSON" <<<"$DAEMON_DEFAULTS" 2>/dev/null); then
 		error "$DAEMON_JSON exists but is not valid JSON; refusing to merge"
 		error "Fix manually or remove it before re-running install-docker.sh"
 		exit 1
