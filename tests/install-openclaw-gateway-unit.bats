@@ -127,7 +127,7 @@ EOF
   rm -rf "$base"
 }
 
-@test "installed unit contains resolved ExecStart with node + openclaw paths" {
+@test "installed unit execs the shim directly (NOT via node — bash shim fed to node crashes)" {
   if [ "$(id -u)" -ne 0 ] || [ ! -x /opt/bash-5.3/bin/bash ]; then
     skip "exec path needs root + /opt/bash-5.3 (CI: source-pattern test covers the contract)"
   fi
@@ -141,7 +141,9 @@ EOF
   local node openclaw
   node="$(command -v node || echo /usr/bin/node)"
   openclaw="$(command -v openclaw || echo /usr/bin/openclaw)"
-  grep -F "ExecStart=$node $openclaw gateway --port 18789" "$unit"
+  # invariant: ExecStart runs the SHIM directly (any path), never via node
+  grep -qE "^ExecStart=/[^ ]*openclaw gateway --port 18789$" "$unit"
+  ! grep -q "^ExecStart=.*node" "$unit"
   # lock the full expected unit shape
   grep -q '^Restart=always$' "$unit"
   grep -q '^WantedBy=default.target$' "$unit"

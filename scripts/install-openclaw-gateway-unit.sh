@@ -76,7 +76,11 @@ StartLimitBurst=5
 StartLimitIntervalSec=60
 
 [Service]
-ExecStart=$NODE_PATH $OPENCLAW_PATH gateway --port 18789
+# /usr/bin/openclaw is a BASH shim (shebang env bash) — systemd execs it
+# directly and the shim handles the 444-lock wrapper. NEVER feed it to
+# node: ExecStart pointing node at this shim crashes at module load
+# (SyntaxError; head/test VMs 2026-10-08).
+ExecStart=$OPENCLAW_PATH gateway --port 18789
 Restart=always
 RestartSec=5
 RestartPreventExitStatus=78
@@ -155,7 +159,7 @@ install() {
     info "openclaw-gateway.service started + active"
   fi
 
-  info "Installed openclaw-gateway.service (ExecStart=$NODE_PATH $OPENCLAW_PATH gateway --port 18789)"
+  info "Installed openclaw-gateway.service (ExecStart=$OPENCLAW_PATH gateway --port 18789)"
 
   # Exit-boundary disarm (same class as install-openclaw-compact.sh): clear
   # any ERR trap + errexit so bash's cleanup race unwinds cleanly. Install
