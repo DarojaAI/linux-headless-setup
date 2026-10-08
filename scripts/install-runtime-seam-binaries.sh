@@ -96,12 +96,7 @@ if ! "$INSTALL_ROOT/runtime-build-finish" --all >/dev/null; then
     # later). What we MUST catch is a parse failure, which would exit
     # before our parser below.
     out="$("$INSTALL_ROOT/runtime-build-finish" --all 2>&1 || true)"
-    if ! printf '%s' "$out" | python3 -c "
-import json, sys
-j = json.loads(sys.stdin.read())
-assert j['status'] in ('delegated', 'unhealthy')
-assert set(j['signals'].keys()) == {'sudoers', 'bash-5.3'}
-" >/dev/null 2>&1; then
+    if ! printf '%s' "$out" | python3 "$SCRIPT_DIR/lib-verify-runtime-build-finish-shape.py" >/dev/null 2>&1; then
         error "runtime-build-finish --all produced non-parseable JSON:"
         error "$out"
         exit 1
