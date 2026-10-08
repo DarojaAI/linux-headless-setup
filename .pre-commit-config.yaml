@@ -1,0 +1,60 @@
+# Pre-commit configuration for linux-headless-setup.
+#
+# Mirrors the hygiene + shellcheck + yamllint shape used by the
+# openclaw-gateway ecosystem, plus a future-proof ruff gate. Runs on every
+# staged file on commit and on the whole tree via ``pre-commit run
+# --all-files`` (wired when the deploy pipeline boots the gate).
+#
+# Hook coverage matches the file types this repo actually uses: shell
+# (installers, maintenance scripts, shims, BATS helpers), YAML (the GitHub
+# Actions workflow), and a ruff-only syntax/name gate that stays dormant
+# until `.py` files land (none tracked today).
+#
+# Excluded: nothing outside core source. The repo tracks no vendored
+# node_modules / __pycache__ trees, so no runtime-artifact exclusions are
+# needed here.
+#
+# NOTE: two shell scripts embed inline python (scripts/install-docker.sh,
+# scripts/install-runtime-seam-binaries.sh); those are recorded in the
+# extraction backlog, not linted by the ruff hook (ruff only sees files
+# with a ``.py`` extension).
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=5000']
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [-x, -S, error]
+        files: ^(scripts/|tests/.*\.sh$)
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        files: \.(yml|yaml)$
+
+  # Future-proof ruff gate: dormant today (no tracked .py files), activates
+  # automatically the moment Python lands. Scoped to syntax/undefined-name/
+  # shadow rules only — no style opinions, no formatting. language: system so
+  # the hook is fully skipped unless ruff (present in this toolchain) is also
+  # present in the runtime environment.
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff (syntax / undefined-name / shadow) — future python gate
+        entry: ruff check --no-cache --isolated --select E9,F632,F821
+        language: system
+        types: [python]
