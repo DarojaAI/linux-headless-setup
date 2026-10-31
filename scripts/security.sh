@@ -5,14 +5,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
+# shellcheck source=ssh-hardening.sh
+source "$SCRIPT_DIR/ssh-hardening.sh"
+
+# SSH drop-in directory. L2 no longer writes an sshd drop-in (issue #52 —
+# sshd limits are owned by L1, terraform-hcloud-linux-vm#9) but still
+# retires the one it used to own. Overridable so the hermetic bats suite
+# can point it at a temp dir; prod always uses /etc/ssh/sshd_config.d.
+SSHD_CONFIG_DIR="${SSHD_CONFIG_DIR:-/etc/ssh/sshd_config.d}"
 
 # ssh service name detection. Ubuntu 24.04+ ships `ssh.service`;
 # Ubuntu 22.04 / Debian use `sshd.service`. The L2 deploy must work
 # against either image, so detect the loaded unit name once and use
 # it for every systemctl invocation. If neither is loaded the SSH
-# drop-in still gets written to /etc/ssh/sshd_config.d/ (so a later
-# install of openssh-server picks it up) but the reload / restart
-# steps become no-ops; we log WARN once and continue.
+# reload / restart steps become no-ops; we log WARN once and continue.
 SSHD_SERVICE=""
 if systemctl list-unit-files ssh.service 2>/dev/null | awk '{print $1}' | grep -qx ssh.service; then
 	SSHD_SERVICE="ssh.service"
@@ -83,58 +89,24 @@ if [ -f /etc/ssh/sshd_config ]; then
 		info "Root SSH is already restricted"
 	fi
 
-	# ── L2 SSH hardening drop-in (issue #52,, epic #48) ──
-	# Tightens distro defaults (MaxStartups 10:30:100→3:50:10) and adds
-	# keepalives so half-closed TCP sockets are reclaimed. MaxAuthTries and
-	# LoginGraceTime are left at distro defaults (6 and 120): CI deploy runners
-	# (e.g. GitHub Actions) commonly carry several keys in `ssh-add` and make
-	# fresh connections after restarts — a low MaxAuthTries kills the auth
-	# attempt before the correct key is offered, and a short LoginGraceTime
-	# closes a slow post-restart auth. MUST NOT touch PermitRootLogin,,
-	# PubkeyAuthentication, or PasswordAuthentication — those are upstream-set
-	# by Hetzner cloud-init.
-	info "Applying L2 SSH hardening drop-in..."
-	# sshd -T prints the effective sshd config. The binary is `/usr/sbin/sshd`
-	# (always installed by the openssh-server package, even if the service
-	# unit is named `ssh.service`). If for some reason sshd is missing,
-	# the drop-in still gets written and verified by reading the file directly.
-	SSHD_BIN="$(command -v sshd || true)"
-	if [ -n "$SSHD_BIN" ]; then
-		ssh_before="$("$SSHD_BIN" -T 2>&1 | grep -E '^(maxstartups|clientaliveinterval|clientalivecountmax) ' || true)"
-	else
-		ssh_before=""
-	fi
-	info "L2 SSH hardening effective values before drop-in: $(echo "$ssh_before" | tr '\n' '; ')"
-	install -d -m 0755 /etc/ssh/sshd_config.d
-	# Pattern: plain `cat >` heredoc, not `install(1)` from /dev/stdin —
-	# coreutils >= 9.4 (Ubuntu 24.04) rejects /dev/stdin sources that
-	# resolve to a pipe, and re-runs over an existing drop-in fail with
-	# `install: No such file or directory` (test deploy 37321450441,
-	# 2026-10-05). umask 022 gives 0644; explicit chmod documents intent.
-	umask 022
-	cat > /etc/ssh/sshd_config.d/10-l2.conf <<'EOF'
-# L2 SSH hardening — applied each deploy.
-MaxStartups 3:50:10
-ClientAliveInterval 60
-ClientAliveCountMax 3
-EOF
-	chmod 0644 /etc/ssh/sshd_config.d/10-l2.conf
-	if [ -n "$SSHD_SERVICE" ]; then
-		systemctl reload "$SSHD_SERVICE" || true
-	fi
-	if [ -n "$SSHD_BIN" ]; then
-		ssh_after="$("$SSHD_BIN" -T 2>&1 | grep -E '^(maxstartups|clientaliveinterval|clientalivecountmax) ' || true)"
-	else
-		# No sshd binary; verify by reading the file we just wrote.
-		ssh_after="$(grep -E '^(MaxStartups|ClientAliveInterval|ClientAliveCountMax) ' /etc/ssh/sshd_config.d/10-l2.conf | tr 'A-Z' 'a-z' | tr -d ' ' | sort)"
-	fi
-	for expected in "maxstartups 3:50:10" "clientaliveinterval 60" "clientalivecountmax 3"; do
-		if ! grep -qE "^${expected}$" <<<"$ssh_after"; then
-			error "L2 SSH drop-in not applied (effective config: $(echo "$ssh_after" | tr '\n' '; '))"
-			exit 1
-		fi
-	done
-	info "L2 SSH hardening active: $(echo "$ssh_after" | tr '\n' '; ')"
+	# ── L2 SSH drop-in retirement (issue #52) ──
+	# L2 previously wrote $SSHD_CONFIG_DIR/10-l2.conf with `MaxStartups
+	# 3:50:10` (plus keepalives), which dropped unauthenticated connections
+	# once three scanners filled the queue — CI runners hit
+	# `kex_exchange_identification: read: Connection reset by peer`, 54
+	# drops in 6 h on the test VM (2026-10-31). Ownership of sshd limits
+	# moved to L1 (terraform-hcloud-linux-vm issue #9 → 09-sshd-limits.conf
+	# with `MaxStartups 40:30:100`); sshd keeps the FIRST value it reads and
+	# `Include` sits at the top of sshd_config, so an L2 10- drop-in would
+	# shadow L1's 09- file. L2 therefore retires the drop-in it used to own
+	# — rename (never silently delete; evidence preserved under a
+	# `.retired-<UTC ts>` suffix), reload only when it existed, and fail
+	# loud if the effective MaxStartups is still 3:50:10. MUST NOT
+	# introduce any other sshd setting (keepalives included) — those belong
+	# in L1's 09-sshd-limits.conf. The step lives in scripts/ssh-hardening.sh
+	# (sourced above) so the hermetic bats suite can exercise it with fake
+	# sshd/systemctl on PATH against temp dirs.
+	l2_retire_sshd_dropin "$SSHD_SERVICE"
 fi
 
 info "Security hardening complete."
