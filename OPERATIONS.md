@@ -91,7 +91,7 @@ its shipping PR without grepping git log.
 | #49 | chrony + NTPSynchronized gate | [PR #55](https://github.com/DarojaAI/linux-headless-setup/pull/55) | `scripts/system.sh` |
 | #50 | journald size/rate caps | [PR #56](https://github.com/DarojaAI/linux-headless-setup/pull/56) | `/etc/systemd/journald.conf.d/99-l2-caps.conf` |
 | #51 | net.ipv4 sysctl drop-in | [PR #57](https://github.com/DarojaAI/linux-headless-setup/pull/57) | `/etc/sysctl.d/99-l2-hardening.conf` |
-| #52 | SSH MaxAuthTries / MaxStartups / ClientAlive drop-in | [PR #58](https://github.com/DarojaAI/linux-headless-setup/pull/58) + [PR #72](https://github.com/DarojaAI/linux-headless-setup/pull/72) | PR #72 reversed MaxAuthTries=3 so CI runners with multiple keys reach the right key |
+| #52 | SSH MaxAuthTries / MaxStartups / ClientAlive drop-in | [PR #58](https://github.com/DarojaAI/linux-headless-setup/pull/58) + [PR #72](https://github.com/DarojaAI/linux-headless-setup/pull/72) | PR #72 reversed MaxAuthTries=3 so CI runners with multiple keys reach the right key. Drop-in **retired 2026-10-31** (#52 reopened): `MaxStartups 3:50:10` dropped CI runner connections (54 drops in 6 h on the test VM); sshd limits moved to L1 (terraform-hcloud-linux-vm#9 → 09-sshd-limits.conf). L2 now only renames any `10-l2.conf` it finds to `10-l2.conf.retired-<UTC ts>` (scripts/ssh-hardening.sh) |
 | #53 | openclaw-healthwatch.{service,timer} | [PR #59](https://github.com/DarojaAI/linux-headless-setup/pull/59) | Auto-restart gateway on `/healthz` failure |
 | #54 | vim-tiny + bash-completion + man-db + less | [PR #60](https://github.com/DarojaAI/linux-headless-setup/pull/60) | `scripts/system.sh` |
 
